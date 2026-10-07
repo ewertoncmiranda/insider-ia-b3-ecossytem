@@ -257,12 +257,12 @@ Tamanho-alvo: 2–4 KB por ficha de ativo; acervo total na casa de poucos MB, ve
 
 | ID | Tarefa | Depende | Aceite | Status |
 |---|---|---|---|---|
-| TASK-IA-07 | Gerador das fichas de **evidência** e **setor** (maior valor, poucas consultas) — Sessão 03 | DEC-IA-05 (decidida) | Fichas geradas, hash estável em reexecução | PLANEJADO |
-| TASK-IA-08 | Gerador das fichas de **ativos** e **mercado/regimes** — Sessão 03. Critério do universo: papéis com fator `LIQUIDEZ_63D` e fundamentos; o banco tem 2.116 códigos no COTAHIST e 221 CNPJs com DFP anual, então "~300" é o teto, não a meta | TASK-IA-07 | ≤ 4 KB por ficha, seção Limitações presente (inclui "eventos corporativos inferidos: 89 registros") | PLANEJADO |
+| TASK-IA-07 | Gerador das fichas de **evidência** e **setor** (maior valor, poucas consultas) — Sessão 03 | DEC-IA-05 (decidida) | Fichas geradas, hash estável em reexecução | EM ANDAMENTO (Sessão 03/feature-esqueleto, 2026-10-07) |
+| TASK-IA-08 | Gerador das fichas de **ativos** e **mercado/regimes** — Sessão 03. Critério do universo: papéis com fator `LIQUIDEZ_63D` e fundamentos; o banco tem 2.116 códigos no COTAHIST e 221 CNPJs com DFP anual, então "~300" é o teto, não a meta | TASK-IA-07 | ≤ 4 KB por ficha, seção Limitações presente (inclui "eventos corporativos inferidos: 89 registros") | EM ANDAMENTO (Sessão 03/feature-esqueleto, 2026-10-07) |
 | TASK-IA-09 | Fundamentos a partir do glossário/fórmulas do painel e PDFs de estudo | — | Trechos com fonte e seção | PLANEJADO |
 | TASK-IA-10 | Indexador incremental + busca com filtro de ponto no tempo | DEC-IA-02, TASK-IA-07 | Teste: trecho com disponibilidade futura nunca retorna | PLANEJADO (adiado até as fichas provarem valor) |
 | TASK-IA-11 | Orquestrador monta contexto (6.5) e cita `trecho_id` | TASK-IA-10 | Respostas citam fontes; validador confere | PLANEJADO |
-| TASK-IA-12 | Agendamento: anual (DFP), trimestral (ITR), semanal (evidência) na rotina da manhã | TASK-IA-08 | Registro em `etl_execucao` | PLANEJADO |
+| TASK-IA-12 | Agendamento: anual (DFP), trimestral (ITR), semanal (evidência) na rotina da manhã | TASK-IA-08 | Registro em `etl_execucao` | EM ANDAMENTO (Sessão 03/feature-esqueleto, 2026-10-07) |
 
 ### Fase 4 — Modelo e painel
 
