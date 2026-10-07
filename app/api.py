@@ -10,6 +10,9 @@ from fastapi import FastAPI
 
 from app import skills as skills_mod
 from app.config import Settings
+from app.modelos import PedidoOpiniao, RespostaOpiniao
+from app.orquestrador import opinar
+from app.provedores.ollama import OllamaProvedor
 
 app = FastAPI(title="insider-ia-b3-ecossytem", version="0.1.0")
 
@@ -42,6 +45,15 @@ def saude() -> dict:
         "indice": {"trechos": 0, "ultima_indexacao": None},
         "aviso": AVISO,
     }
+
+
+@app.post("/opiniao", response_model=RespostaOpiniao)
+def opiniao(pedido: PedidoOpiniao) -> RespostaOpiniao:
+    """CTR-IA-01: um horizonte por chamada. Nunca devolve 5xx por falha do modelo (cai na regra)."""
+    settings = Settings.do_ambiente()
+    conjunto = skills_mod.listar(settings.dir_skills)
+    provedor = OllamaProvedor(settings.ollama_url, settings.modelo_chat, timeout_s=settings.timeout_modelo_s)
+    return opinar(pedido, provedor, skills_mod.versao_do_conjunto(conjunto))
 
 
 @app.get("/skills")
