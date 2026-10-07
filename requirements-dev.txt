@@ -1,0 +1,4 @@
+# Ferramentas de desenvolvimento e CI (nao vao para a imagem).
+-r requirements.txt
+pytest>=8.0
+httpx>=0.27

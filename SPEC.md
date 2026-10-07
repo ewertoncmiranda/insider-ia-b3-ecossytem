@@ -241,7 +241,7 @@ Tamanho-alvo: 2–4 KB por ficha de ativo; acervo total na casa de poucos MB, ve
 
 | ID | Tarefa | Depende | Aceite | Status |
 |---|---|---|---|---|
-| TASK-IA-01 | Esqueleto do repo: FastAPI, Dockerfile, `compose.ia.yml` (duas redes, 4.3), CI (lint + testes + build); remover `compose.ia*.yml` da infra | — | `GET /saude` responde no compose local | EM ANDAMENTO (Sessão 02/feature-esqueleto, 2026-10-07) |
+| TASK-IA-01 | Esqueleto do repo: FastAPI, Dockerfile, `compose.ia.yml` (duas redes, 4.3), CI (lint + testes + build); remover `compose.ia*.yml` da infra | — | `GET /saude` responde no compose local | IMPLEMENTADO (2026-10-07): `/saude` e `/skills` no ar no compose local (container `healthy`, modelo baixado detectado), rede `ia` sem internet conferida, CI só com testes. Falta remover `compose.ia*.yml` da infra |
 | TASK-IA-02 | Portar `modelo_llm.py`, validador e reserva por regra de `gerar-insights/app/opiniao` (contrato com `permitidas` e `risco_calculado`, 5.1) | TASK-IA-01, TASK-IA-05 | Linhas `origem = REGRA` idênticas às do gerador atual nos 315 dossiês de 2026-10-06; linhas `MODELO` passam no mesmo validador | PLANEJADO |
 | TASK-IA-03 | `gerar-insights` passa a chamar `POST /opiniao` por HTTP, enviando evidências, `permitidas` e `risco_calculado` | TASK-IA-02 | Linhas `REGRA` de `opiniao_ia` idênticas antes/depois (as de modelo dependem de semente e versão: só precisam passar no validador); prompt removido do worker | PLANEJADO |
 
@@ -297,7 +297,7 @@ insider-ia-b3-ecossytem/
 ## 11. Verificação
 
 - `pytest -q` e `ruff check app tests`.
-- `docker compose -f ../infra-b3-ecossytem/docker-compose-local.yml -f compose.ia.yml --profile ia up -d` e `curl http://localhost:8000/saude` (dev).
+- `docker compose -f ../infra-b3-ecossytem/docker-compose-local.yml -f compose.ia.yml --profile ia up -d` e, com `exec ia-opiniao python -c "import urllib.request;print(urllib.request.urlopen('http://127.0.0.1:8000/saude').read().decode())"`, conferir `/saude` (a rede `ia` é interna e não publica porta no host).
 - Avaliação: `python -m avaliacao.rodar` compara com `esperado/` e imprime acerto de formato, taxa de reserva por regra e citações inválidas.
 
 ## 12. Aviso regulatório
