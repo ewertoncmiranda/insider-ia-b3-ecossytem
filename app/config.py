@@ -24,7 +24,7 @@ class Settings:
         raiz = Path(__file__).resolve().parents[1]
         return cls(
             ollama_url=os.getenv("OLLAMA_URL", "http://ollama:11434").rstrip("/"),
-            modelo_chat=os.getenv("MODELO_CHAT", "qwen2.5:1.5b-instruct"),
+            modelo_chat=os.getenv("MODELO_CHAT", "qwen2.5:0.5b-instruct"),
             modelo_embed=os.getenv("MODELO_EMBED", "nomic-embed-text"),
             vetores_url=os.getenv("VETORES_URL") or None,
             rag_indice=Path(os.getenv("RAG_INDICE", str(raiz / "var" / "rag.sqlite"))),

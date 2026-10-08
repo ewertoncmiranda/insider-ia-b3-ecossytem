@@ -116,7 +116,7 @@ Vocabulário fechado: `opiniao ∈ {SINAL_POSITIVO, SINAL_NEGATIVO, SINAL_NEUTRO
 
 ### 5.4 Variáveis de ambiente
 
-`OLLAMA_URL`, `MODELO_CHAT` (padrão `qwen2.5:1.5b-instruct`, alvo `qwen2.5:7b-instruct`), `MODELO_EMBED` (`nomic-embed-text`), `VETORES_URL`, `DIR_SKILLS`, `DIR_CONHECIMENTO`, `DB_*` (só leitura, para o gerador de fichas), `LOG_LEVEL`.
+`OLLAMA_URL`, `MODELO_CHAT` (padrão `qwen2.5:0.5b-instruct` desde 2026-10-08; antes `qwen2.5:1.5b-instruct`), `MODELO_EMBED` (`nomic-embed-text`), `VETORES_URL`, `DIR_SKILLS`, `DIR_CONHECIMENTO`, `DB_*` (só leitura, para o gerador de fichas), `LOG_LEVEL`.
 
 ---
 
@@ -228,7 +228,7 @@ Tamanho-alvo: 2–4 KB por ficha de ativo; acervo total na casa de poucos MB, ve
 | DEC-IA-01 | Onde ficam as fichas | Git deste repo (recomendado: histórico e revisão) x volume Docker |
 | DEC-IA-02 | Motor de vetores | SQLite + `sqlite-vec` no início (zero serviço extra); Qdrant quando passar de ~50 mil trechos |
 | DEC-IA-03 | Gravar fontes usadas | **Decidido (2026-10-07): campo dentro de `justificativa_json`, sem V23.** Evita migration e disputa de número no hub; o painel já lê esse JSON |
-| DEC-IA-04 | Modelo alvo | **Decidido (2026-10-07): manter `qwen2.5:1.5b-instruct`** (único que cabe em 2 GB de GPU) com validador e reserva por regra compensando a fraqueza; o 7b só se houver GPU maior (TASK-IA-13) |
+| DEC-IA-04 | Modelo alvo | **Revisto (2026-10-08): `qwen2.5:0.5b-instruct`** — máquina sem GPU; em CPU o 1.5b gerava ~2,6 tokens/s e estourava o timeout em toda chamada (nenhuma resposta 200 em 72 h). Validador e reserva por regra compensam a fraqueza. Antes (2026-10-07): 1.5b. O 7b só com GPU (TASK-IA-13) |
 | DEC-IA-05 | Quem gera as fichas | **Decidido (2026-10-07): job deste repo lendo o MySQL**, executado pela Sessão 03 (TASK-IA-07/08), com rede e usuário só de leitura |
 
 ---

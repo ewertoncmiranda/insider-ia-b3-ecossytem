@@ -47,7 +47,7 @@ services:
     entrypoint: ["sh", "-c"]
     # Sobe um servidor so para este container, espera ficar pronto e baixa o modelo no volume.
     command:
-      - ollama serve >/dev/null 2>&1 & until ollama list >/dev/null 2>&1; do sleep 1; done; ollama pull $${MODELO_CHAT:-qwen2.5:1.5b-instruct}
+      - ollama serve >/dev/null 2>&1 & until ollama list >/dev/null 2>&1; do sleep 1; done; ollama pull $${MODELO_CHAT:-qwen2.5:0.5b-instruct}
     volumes:
       - ollama_models:/root/.ollama
     networks:
@@ -60,7 +60,7 @@ services:
     restart: unless-stopped
     environment:
       OLLAMA_URL: http://ollama:11434
-      MODELO_CHAT: ${MODELO_CHAT:-qwen2.5:1.5b-instruct}
+      MODELO_CHAT: ${MODELO_CHAT:-qwen2.5:0.5b-instruct}
       MODELO_EMBED: ${MODELO_EMBED:-nomic-embed-text}
       RAG_INDICE: /app/var/rag.sqlite
       LOG_LEVEL: INFO
@@ -81,7 +81,7 @@ services:
   gerar-insights:
     environment:
       OLLAMA_URL: http://ollama:11434
-      OLLAMA_MODELO: ${MODELO_CHAT:-qwen2.5:1.5b-instruct}
+      OLLAMA_MODELO: ${MODELO_CHAT:-qwen2.5:0.5b-instruct}
       IA_URL: http://ia-opiniao:8000
     networks:
       - observability
