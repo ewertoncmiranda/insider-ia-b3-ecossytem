@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 
+from app.contexto import FonteDeContexto, TrechoDeContexto, limitar
 from app.modelos import ORIGEM_MODELO, ORIGEM_REGRA, SEM_BASE, PedidoOpiniao, RespostaOpiniao
 from app.prompt import SCHEMA_DA_RESPOSTA, SISTEMA, montar_mensagem
 from app.provedores.ollama import ErroDoProvedor, ProvedorLLM
@@ -22,10 +23,21 @@ MODELO_REGRA = "regra"
 log = logging.getLogger("ia-opiniao")
 
 
-def _consultar(provedor: ProvedorLLM, pedido: PedidoOpiniao, sistema: str,
-               schema: dict) -> tuple[dict | None, int, str]:
+def _fontes(justificativa: list[dict], trechos: list[TrechoDeContexto]) -> list[str]:
+    """Fichas (caminho#secao) dos trechos citados, sem repetir e na ordem da justificativa."""
+    fonte_de = {t.trecho_id: t.fonte for t in trechos}
+    vistas: list[str] = []
+    for item in justificativa:
+        fonte = fonte_de.get(str(item.get("trecho_id") or ""))
+        if fonte and fonte not in vistas:
+            vistas.append(fonte)
+    return vistas
+
+
+def _consultar(provedor: ProvedorLLM, pedido: PedidoOpiniao, sistema: str, schema: dict,
+               trechos: list[TrechoDeContexto]) -> tuple[dict | None, int, str]:
     """(resposta valida | None, tentativas feitas, motivo da reserva quando None)."""
-    mensagem = montar_mensagem(pedido)
+    mensagem = montar_mensagem(pedido, trechos)
     erros: list[str] = []
     for tentativa in range(1, TENTATIVAS + 1):
         usuario = mensagem if not erros else (
@@ -40,24 +52,28 @@ def _consultar(provedor: ProvedorLLM, pedido: PedidoOpiniao, sistema: str,
         except json.JSONDecodeError:
             erros = ["resposta não é JSON válido"]
             continue
-        valida, erros = validar(resposta, pedido)
+        valida, erros = validar(resposta, pedido, trechos)
         if valida is not None:
             return valida, tentativa, ""
     return None, TENTATIVAS, "rejeitada: " + "; ".join(erros)
 
 
 def opinar(pedido: PedidoOpiniao, provedor: ProvedorLLM | None, skills_versao: str,
-           sistema: str | None = None, schema: dict | None = None) -> RespostaOpiniao:
+           sistema: str | None = None, schema: dict | None = None,
+           contexto: FonteDeContexto | None = None) -> RespostaOpiniao:
     """`sistema` e `schema` vem das skills selecionadas (TASK-IA-04); sem skills, o prompt embutido."""
     origem, tentativas, motivo = ORIGEM_REGRA, 0, ""
     nome_modelo = provedor.nome if provedor is not None else MODELO_REGRA
     corpo: dict | None = None
+    trechos: list[TrechoDeContexto] = []
     if provedor is None:
         motivo = "sem provedor"
     elif list(pedido.permitidas) == [SEM_BASE]:
         motivo = "só SEM_BASE permitido"  # nada a escolher: dispensa a chamada
     else:
-        corpo, tentativas, motivo = _consultar(provedor, pedido, sistema or SISTEMA, schema or SCHEMA_DA_RESPOSTA)
+        trechos = limitar(contexto.trechos(pedido)) if contexto is not None else []
+        corpo, tentativas, motivo = _consultar(provedor, pedido, sistema or SISTEMA,
+                                               schema or SCHEMA_DA_RESPOSTA, trechos)
         if corpo is not None:
             origem = ORIGEM_MODELO
     if corpo is None:
@@ -68,6 +84,6 @@ def opinar(pedido: PedidoOpiniao, provedor: ProvedorLLM | None, skills_versao: s
     ausentes = list(pedido.dados_ausentes) + ([pedido.motivo_sem_base] if pedido.motivo_sem_base else [])
     return RespostaOpiniao(
         opiniao=corpo["opiniao"], risco=corpo["risco"], justificativa=corpo["justificativa"],
-        o_que_invalida=corpo["o_que_invalida"], dados_ausentes=ausentes, fontes=[],
+        o_que_invalida=corpo["o_que_invalida"], dados_ausentes=ausentes, fontes=_fontes(corpo["justificativa"], trechos),
         modelo=nome_modelo, skills_versao=skills_versao, origem=origem, tentativas=tentativas,
     )

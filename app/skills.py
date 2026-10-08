@@ -46,7 +46,7 @@ def listar(dir_skills: Path) -> list[Skill]:
     saida: list[Skill] = []
     pastas = sorted(p for p in dir_skills.iterdir() if p.is_dir() and (p / "SKILL.md").is_file())
     for pasta in pastas:
-        meta, corpo = _separar((pasta / "SKILL.md").read_text(encoding="utf-8"))
+        meta, corpo = _separar((pasta / "SKILL.md").read_text(encoding="utf-8-sig"))
         saida.append(Skill(pasta.name, meta.get("versao", "0"), _hash_da_pasta(pasta)[:12], meta, corpo))
     return saida
 
@@ -96,4 +96,4 @@ def schema_da_resposta(dir_skills: Path) -> dict | None:
     caminho = dir_skills / "formato-resposta" / "schema.json"
     if not caminho.is_file():
         return None
-    return json.loads(caminho.read_text(encoding="utf-8"))
+    return json.loads(caminho.read_text(encoding="utf-8-sig"))

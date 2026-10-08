@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 
+from app.contexto import TrechoDeContexto
 from app.modelos import NEGATIVO, OPINIOES, POSITIVO, RISCOS, SEM_BASE, Evidencia, PedidoOpiniao
 from app.regras import MAXIMO_DE_JUSTIFICATIVAS, condicoes_contrarias
 
@@ -24,11 +25,18 @@ _NUMERO = re.compile(r"\d+(?:[.,]\d+)?")
 _ID_TECNICO = re.compile(r"[a-z]+_[a-z0-9_]+")
 
 
+def _item(j: dict) -> dict:
+    if j.get("evidencia_id"):
+        return {"evidencia_id": str(j["evidencia_id"]), "leitura": str(j["leitura"]).strip()}
+    return {"trecho_id": str(j["trecho_id"]), "leitura": str(j["leitura"]).strip()}
+
+
 def _numeros(texto: str) -> set[str]:
     return {n.replace(",", ".") for n in _NUMERO.findall(texto)}
 
 
-def validar(resposta: object, pedido: PedidoOpiniao) -> tuple[dict | None, list[str]]:
+def validar(resposta: object, pedido: PedidoOpiniao,
+            trechos: list[TrechoDeContexto] | None = None) -> tuple[dict | None, list[str]]:
     """(resposta normalizada, erros). Erros vazios = valida."""
     erros: list[str] = []
     if not isinstance(resposta, dict):
@@ -55,13 +63,26 @@ def validar(resposta: object, pedido: PedidoOpiniao) -> tuple[dict | None, list[
         return None, erros
 
     por_id: dict[str, Evidencia] = {e.id: e for e in pedido.evidencias}
+    por_trecho = {t.trecho_id: t for t in (trechos or [])}
     permitidos = {n for e in pedido.evidencias for n in _numeros(f"{e.valor} {e.rotulo}")}
     if opiniao != SEM_BASE and not justificativa:
         erros.append("opinião sem justificativa")
     citadas: list[Evidencia] = []
     for item in justificativa:
-        ev = por_id.get(str(item.get("evidencia_id")))
         leitura = str(item.get("leitura") or "").strip()
+        trecho_id = item.get("trecho_id")
+        if trecho_id and not item.get("evidencia_id"):
+            trecho = por_trecho.get(str(trecho_id))
+            if trecho is None:
+                erros.append(f"trecho inexistente: {trecho_id!r}")
+                continue
+            if not leitura or len(leitura) > LIMITE_LEITURA:
+                erros.append(f"leitura vazia ou longa demais em {trecho.trecho_id}")
+            sobra = _numeros(leitura) - _numeros(trecho.texto) - permitidos
+            if sobra:
+                erros.append(f"número fora do trecho {trecho.trecho_id}: {sorted(sobra)}")
+            continue
+        ev = por_id.get(str(item.get("evidencia_id")))
         if ev is None:
             erros.append(f"evidência inexistente: {item.get('evidencia_id')!r}")
             continue
@@ -94,7 +115,6 @@ def validar(resposta: object, pedido: PedidoOpiniao) -> tuple[dict | None, list[
     return {
         "opiniao": opiniao,
         "risco": risco,
-        "justificativa": [{"evidencia_id": str(j["evidencia_id"]), "leitura": str(j["leitura"]).strip()}
-                          for j in justificativa],
+        "justificativa": [_item(j) for j in justificativa],
         "o_que_invalida": condicoes_contrarias(pedido, str(opiniao)),
     }, []

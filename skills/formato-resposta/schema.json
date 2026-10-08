@@ -1,4 +1,4 @@
-{
+﻿{
   "type": "object",
   "properties": {
     "opiniao": {"type": "string", "enum": ["SINAL_POSITIVO", "SINAL_NEGATIVO", "SINAL_NEUTRO", "SEM_BASE"]},
@@ -7,8 +7,8 @@
       "type": "array",
       "items": {
         "type": "object",
-        "properties": {"evidencia_id": {"type": "string"}, "leitura": {"type": "string"}},
-        "required": ["evidencia_id", "leitura"]
+        "properties": {"evidencia_id": {"type": "string"}, "trecho_id": {"type": "string"}, "leitura": {"type": "string"}},
+        "required": ["leitura"]
       }
     }
   },

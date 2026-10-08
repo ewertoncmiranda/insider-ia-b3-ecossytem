@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+from app.contexto import TrechoDeContexto
 from app.modelos import OPINIOES, RISCOS, PedidoOpiniao
 
 NOME_DO_HORIZONTE = {21: "curto (cerca de 1 mês, 21 pregões)",
@@ -21,8 +22,9 @@ SCHEMA_DA_RESPOSTA = {
             "type": "array",
             "items": {
                 "type": "object",
-                "properties": {"evidencia_id": {"type": "string"}, "leitura": {"type": "string"}},
-                "required": ["evidencia_id", "leitura"],
+                "properties": {"evidencia_id": {"type": "string"}, "trecho_id": {"type": "string"},
+                               "leitura": {"type": "string"}},
+                "required": ["leitura"],
             },
         },
     },
@@ -44,7 +46,7 @@ SISTEMA = (
 )
 
 
-def montar_mensagem(pedido: PedidoOpiniao) -> str:
+def montar_mensagem(pedido: PedidoOpiniao, trechos: list[TrechoDeContexto] | None = None) -> str:
     """Mensagem do usuario: so dados do pedido, em JSON fechado; direcionais primeiro, no maximo 8."""
     ordenadas = sorted(pedido.evidencias, key=lambda e: (e.direcao == 0, e.id))
     corpo = {
@@ -58,4 +60,6 @@ def montar_mensagem(pedido: PedidoOpiniao) -> str:
             for e in ordenadas[:MAXIMO_DE_EVIDENCIAS_NO_PEDIDO]
         ],
     }
+    if trechos:
+        corpo["trechos"] = [{"trecho_id": t.trecho_id, "texto": t.texto} for t in trechos]
     return json.dumps(corpo, ensure_ascii=False)

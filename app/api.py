@@ -10,6 +10,7 @@ from fastapi import FastAPI
 
 from app import skills as skills_mod
 from app.config import Settings
+from app.contexto import ContextoRag
 from app.modelos import PedidoOpiniao, RespostaOpiniao
 from app.orquestrador import opinar
 from app.provedores.ollama import OllamaProvedor
@@ -56,7 +57,8 @@ def opiniao(pedido: PedidoOpiniao) -> RespostaOpiniao:
     escolhidas = skills_mod.selecionar(conjunto, pedido.horizonte_pregoes, [e.id for e in pedido.evidencias])
     return opinar(pedido, provedor, skills_mod.versao_do_conjunto(conjunto),
                   sistema=skills_mod.montar_sistema(escolhidas) or None,
-                  schema=skills_mod.schema_da_resposta(settings.dir_skills))
+                  schema=skills_mod.schema_da_resposta(settings.dir_skills),
+                  contexto=ContextoRag(settings.rag_indice) if settings.rag_indice.is_file() else None)
 
 
 @app.get("/skills")
