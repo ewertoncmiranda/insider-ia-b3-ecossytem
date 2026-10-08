@@ -242,7 +242,7 @@ Tamanho-alvo: 2–4 KB por ficha de ativo; acervo total na casa de poucos MB, ve
 | ID | Tarefa | Depende | Aceite | Status |
 |---|---|---|---|---|
 | TASK-IA-01 | Esqueleto do repo: FastAPI, Dockerfile, `compose.ia.yml` (duas redes, 4.3), CI (lint + testes + build); remover `compose.ia*.yml` da infra | — | `GET /saude` responde no compose local | IMPLEMENTADO (2026-10-07): `/saude` e `/skills` no ar no compose local (container `healthy`, modelo baixado detectado), rede `ia` sem internet conferida, CI só com testes. Falta remover `compose.ia*.yml` da infra |
-| TASK-IA-02 | Portar `modelo_llm.py`, validador e reserva por regra de `gerar-insights/app/opiniao` (contrato com `permitidas` e `risco_calculado`, 5.1) | TASK-IA-01, TASK-IA-05 | Linhas `origem = REGRA` idênticas às do gerador atual nos 315 dossiês de 2026-10-06; linhas `MODELO` passam no mesmo validador | PLANEJADO |
+| TASK-IA-02 | Portar `modelo_llm.py`, validador e reserva por regra de `gerar-insights/app/opiniao` (contrato com `permitidas` e `risco_calculado`, 5.1) | TASK-IA-01, TASK-IA-05 | Linhas `origem = REGRA` idênticas às do gerador atual nos 315 dossiês de 2026-10-06; linhas `MODELO` passam no mesmo validador | IMPLEMENTADO (2026-10-07, 8e16bf3): `POST /opiniao` com validador e reserva por regra; os 315 dossiês de 2026-10-06 reproduzem o esperado sem divergência (`tests/test_avaliacao.py`); linhas MODELO passam no mesmo validador. Sobrou, fora desta task: com o Ollama em CPU o limite de 180 s estoura e o serviço responde pela regra (ver IA-13/DEC-IA-04) |
 | TASK-IA-03 | `gerar-insights` passa a chamar `POST /opiniao` por HTTP, enviando evidências, `permitidas` e `risco_calculado` | TASK-IA-02 | Linhas `REGRA` de `opiniao_ia` idênticas antes/depois (as de modelo dependem de semente e versão: só precisam passar no validador); prompt removido do worker | EM ANDAMENTO (Sessão 01/feature-migrate no gerar-insights, 2026-10-08) |
 
 ### Fase 2 — Skills
@@ -250,7 +250,7 @@ Tamanho-alvo: 2–4 KB por ficha de ativo; acervo total na casa de poucos MB, ve
 | ID | Tarefa | Depende | Aceite | Status |
 |---|---|---|---|---|
 | TASK-IA-04 | Converter o prompt atual em skills (seção 6.2) | TASK-IA-02 | Conjunto de avaliação não piora | PLANEJADO (Sessão 02, delegado em 2026-10-08) |
-| TASK-IA-05 | Conjunto de avaliação (`avaliacao/dossies`, `esperado`) e métrica no CI. Os dossiês saem de `opiniao_ia` (pregão 2026-10-06, `evidencias_json`, risco e permitidas recalculadas pelas regras) | TASK-IA-01 | CI falha em regressão | EM ANDAMENTO (Sessão 02/feature-esqueleto, 2026-10-07) |
+| TASK-IA-05 | Conjunto de avaliação (`avaliacao/dossies`, `esperado`) e métrica no CI. Os dossiês saem de `opiniao_ia` (pregão 2026-10-06, `evidencias_json`, risco e permitidas recalculadas pelas regras) | TASK-IA-01 | CI falha em regressão | IMPLEMENTADO (2026-10-07, 8e16bf3): 315 dossiês e esperados em `avaliacao/`, exportados por `gerar-insights/app/opiniao/exportar_avaliacao.py`; `python -m avaliacao.rodar` (provedor `regra` ou `ollama`) e `tests/test_avaliacao.py` no CI falham em regressão |
 | TASK-IA-06 | Corrigir falhas observadas: contradição sinal x evidência, ids de fator em "o que invalida", excesso de justificativas. **Já resolvidas no gerador atual** (prompt 1.2, 2026-10-07: justificativa só com o que sustenta a opinião, máx. 5, e `o_que_invalida` calculado das evidências contrárias); falta portar e cobrir com casos | TASK-IA-02 | Casos de PETR4/2026-10-06 passam no validador | PLANEJADO (Sessão 03, delegado em 2026-10-08) |
 
 ### Fase 3 — Fichas e RAG
