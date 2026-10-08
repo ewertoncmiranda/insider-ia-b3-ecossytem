@@ -18,9 +18,11 @@ from app.orquestrador import opinar, opinar_ativo
 from app.provedores.cadeia import montar_cadeia
 
 from app.chat.api import router as chat_router  # noqa: E402
+from app.ativo.rotas import rotas as ativo_rotas  # noqa: E402
 
 app = FastAPI(title="insider-ia-b3-ecossytem", version="0.1.0")
 app.include_router(chat_router)
+app.include_router(ativo_rotas)
 
 AVISO = "Leitura automática dos números, regra experimental. Não é recomendação de investimento."
 
