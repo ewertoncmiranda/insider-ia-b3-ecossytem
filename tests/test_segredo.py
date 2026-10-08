@@ -183,10 +183,12 @@ def test_saude_nao_mostra_a_chave(ambiente, monkeypatch):
 def test_chat_nao_vaza(ambiente, monkeypatch, nome):
     from app.api import app
 
-    if not any(getattr(rota, "path", None) == "/chat" for rota in app.routes):
-        pytest.skip("POST /chat ainda nao existe neste build (TASK-IA-30)")
     usar_cenario(monkeypatch, nome)
     corpo = {"sessao_id": str(uuid.uuid4()), "mensagem": "O que é P/L?", "simbolo": None}
     with TestClient(app).stream("POST", "/chat", json=corpo) as resposta:
+        if resposta.status_code == 404:  # roteador incluido nao aparece em app.routes: pergunta a rota
+            pytest.skip("POST /chat ainda nao existe neste build (TASK-IA-30)")
         texto = "".join(resposta.iter_text())
+    assert resposta.status_code == 200
+    assert "event:" in texto  # o fluxo SSE rodou de fato (inicio/token/fim ou erro)
     assert_sem_chave(texto, resposta.headers, ambiente.text)
