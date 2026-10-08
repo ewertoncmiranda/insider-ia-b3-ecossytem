@@ -1,0 +1,2 @@
+# Dependencias so do job de fichas (TASK-IA-07/08); a API nao precisa.
+pymysql>=1.1,<2

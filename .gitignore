@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+*.pem
+
+# IDE (configuracao local, nao vai para o repositorio)
+.idea/
+
+# Indice do RAG (derivado das fichas; reconstruivel com python -m app.rag.indexador)
+var/

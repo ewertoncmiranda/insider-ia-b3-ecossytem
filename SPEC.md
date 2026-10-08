@@ -70,9 +70,9 @@ gerar-insights ◀── JSON validado ────┘ → grava opiniao_ia → 
 
 ### 4.3 Rede e implantação
 
-- Rede Docker interna do compose local; `ia-opiniao` expõe `8000` só na rede (sem porta no host, exceto em dev: `127.0.0.1`).
-- Containers sem saída para a internet (rede `internal: true` para `ia-opiniao`, `ollama`, `vetores`). O download de modelos é passo manual fora da rotina.
-- `compose.ia.yml` deste repositório é incluído pela infra (`docker compose -f docker-compose-local.yml -f ../insider-ia-b3-ecossytem/compose.ia.yml --profile ia`). GPU opcional via `compose.ia-gpu.yml`.
+- `ia-opiniao` expõe `8000` só na rede (sem porta no host, exceto em dev: `127.0.0.1`).
+- **Duas redes (decisão de 2026-10-07):** `ia` (`internal: true`, sem saída para a internet) liga `ia-opiniao`, `ollama` e `vetores`, e é a única que o `gerar-insights` precisa para chamar o serviço. A leitura do MySQL (job de fichas, DEC-IA-05) usa a rede `observability` já existente, e **só o container do job** entra nela; o `ia-opiniao` que atende `/opiniao` não tem acesso ao banco (NFR-IA-06). O download de modelos é passo manual fora da rotina (`ollama pull` com a rede padrão, uma vez).
+- `compose.ia.yml` e `compose.ia-gpu.yml` **passam a morar neste repositório** (posse transferida da infra, onde existiam desde 2026-10-07, TASK-IA-01); a infra remove os seus. Uso: `docker compose -f ../infra-b3-ecossytem/docker-compose-local.yml -f compose.ia.yml --profile ia up -d`. Porta do Ollama no host: `127.0.0.1:11435` (a 11434 costuma ser do Ollama instalado no Windows). GPU opcional via `compose.ia-gpu.yml`; neste PC o Docker não enxerga a GPU (WSL sem adaptadores), então o padrão é CPU.
 - Imagem publicada como `ewertonmiranda/insider-ia-b3-ecossytem:develop` pelo CI, como os demais.
 
 ---
@@ -85,8 +85,11 @@ Entrada:
 ```json
 { "simbolo": "PETR4", "data_pregao": "2026-10-06", "horizonte_pregoes": 21,
   "evidencias": [ { "id": "sinal_momentum", "rotulo": "Sinal técnico de momentum", "valor": "NEUTRO_TECNICO", "direcao": 0 } ],
+  "permitidas": ["SINAL_NEUTRO", "SEM_BASE"], "risco_calculado": "RISCO_MEDIO",
+  "motivo_sem_base": null, "dados_ausentes": ["..."],
   "versao_regra": "2026.09.27-3" }
 ```
+`permitidas` (ordenadas da mais forte para a mais cautelosa) e `risco_calculado` são **entradas obrigatórias**: o `gerar-insights` continua dono das evidências, das opiniões permitidas e do risco (`app/opiniao/regras.py`); este serviço escolhe dentro do permitido, redige e valida, e é a base da reserva por regra. Sem esses dois campos o validador não tem contra o quê conferir (REQ-IA-03/04).
 Saída:
 ```json
 { "opiniao": "SINAL_NEUTRO", "risco": "RISCO_MEDIO",
@@ -94,6 +97,8 @@ Saída:
   "o_que_invalida": ["..."], "dados_ausentes": ["..."], "fontes": ["conhecimento/evidencia/momentum.md#resultado"],
   "modelo": "qwen2.5:7b-instruct", "skills_versao": "skills@<hash>", "origem": "MODELO" }
 ```
+`o_que_invalida` **não é escrito pelo modelo**: é calculado das evidências que apontam no sentido contrário da opinião (o 1.5B copiava ids e evidências nesse campo, observado em PETR4, 2026-10-06). A justificativa tem de 2 a 5 itens e só cita o que sustenta a opinião. Cada item de `justificativa` cita `evidencia_id` **ou** `trecho_id`.
+
 Vocabulário fechado: `opiniao ∈ {SINAL_POSITIVO, SINAL_NEGATIVO, SINAL_NEUTRO, SEM_BASE}`, `risco ∈ {RISCO_BAIXO, RISCO_MEDIO, RISCO_ALTO}`, `origem ∈ {MODELO, REGRA}` — iguais aos `CHECK` da V22.
 
 ### 5.2 Demais endpoints
@@ -107,7 +112,7 @@ Vocabulário fechado: `opiniao ∈ {SINAL_POSITIVO, SINAL_NEGATIVO, SINAL_NEUTRO
 ### 5.3 Persistência
 
 - `opiniao_ia` continua gravada pelo `gerar-insights`. `versao_prompt` passa a registrar `skills@<hash>`.
-- Nova coluna sugerida para a infra (V23, decisão DEC-IA-03): `fontes_json` com os `trecho_id` usados.
+- **Sem migration (DEC-IA-03):** os `trecho_id` usados vão dentro de `justificativa_json` (item com `trecho_id` em vez de `evidencia_id`) e na lista `fontes` da resposta. Nenhuma coluna nova; o gestor e o painel só precisam aceitar o item com `trecho_id` (TASK-IA-14).
 
 ### 5.4 Variáveis de ambiente
 
@@ -208,7 +213,7 @@ Tamanho-alvo: 2–4 KB por ficha de ativo; acervo total na casa de poucos MB, ve
 | ID | Requisito |
 |---|---|
 | NFR-IA-01 | Determinismo: temperatura 0, `format: json`, mesmas entradas ⇒ mesma saída (por versão de modelo e skills) |
-| NFR-IA-02 | Latência p95 ≤ 20 s por chamada em CPU com modelo 1.5b; ≤ 5 s com GPU e 7b |
+| NFR-IA-02 | Latência por chamada (medida em 2026-10-07 neste PC, 4 núcleos, GPU de 2 GB): **~160 s** no container em CPU com 1.5b; **~28 s** no Ollama do Windows com GPU e 1.5b. Meta: p95 ≤ 45 s com GPU e 1.5b; em CPU o job roda em lote fora do horário (315 chamadas ≈ 14 h em CPU, ≈ 2,5 h com GPU), então a opinião do dia usa a reserva por regra até o lote terminar. O 7b (~4,7 GB quantizado) não cabe nos 2 GB de GPU |
 | NFR-IA-03 | Sem rede externa em execução |
 | NFR-IA-04 | Observabilidade: log estruturado com `simbolo`, `horizonte`, `skills_versao`, `modelo`, `origem`, motivo de reserva |
 | NFR-IA-05 | Avaliação offline no CI: conjunto fixo de dossiês; mudança de skill/modelo não pode piorar as métricas |
@@ -222,47 +227,49 @@ Tamanho-alvo: 2–4 KB por ficha de ativo; acervo total na casa de poucos MB, ve
 |---|---|---|
 | DEC-IA-01 | Onde ficam as fichas | Git deste repo (recomendado: histórico e revisão) x volume Docker |
 | DEC-IA-02 | Motor de vetores | SQLite + `sqlite-vec` no início (zero serviço extra); Qdrant quando passar de ~50 mil trechos |
-| DEC-IA-03 | Gravar fontes usadas | Nova coluna `fontes_json` em `opiniao_ia` (V23 na infra) x campo dentro de `justificativa_json` |
-| DEC-IA-04 | Modelo alvo | `qwen2.5:7b-instruct` com GPU; manter 1.5b como mínimo em CPU |
-| DEC-IA-05 | Quem gera as fichas | Job deste repo lendo o MySQL (recomendado) x job no `gerar-insights` |
+| DEC-IA-03 | Gravar fontes usadas | **Decidido (2026-10-07): campo dentro de `justificativa_json`, sem V23.** Evita migration e disputa de número no hub; o painel já lê esse JSON |
+| DEC-IA-04 | Modelo alvo | **Decidido (2026-10-07): manter `qwen2.5:1.5b-instruct`** (único que cabe em 2 GB de GPU) com validador e reserva por regra compensando a fraqueza; o 7b só se houver GPU maior (TASK-IA-13) |
+| DEC-IA-05 | Quem gera as fichas | **Decidido (2026-10-07): job deste repo lendo o MySQL**, executado pela Sessão 03 (TASK-IA-07/08), com rede e usuário só de leitura |
 
 ---
 
 ## 9. Plano de execução (tarefas)
 
+**Responsáveis (redistribuído pelo usuário em 2026-10-08; substitui a divisão de 2026-10-07):** Sessão 01 — TASK-IA-03; Sessão 02 — TASK-IA-04, 11 e 14 (e fechar o status de 02/05, que entregou em `8e16bf3`); Sessão 03 — TASK-IA-06, 09, 10, 12, 13 e o que faltar de 02/05. Ordem: IA-10 (Sessão 03) desbloqueia IA-11 (Sessão 02), que desbloqueia IA-14; IA-03 (Sessão 01) depende de IA-02. RAG (TASK-IA-10/11) deixa de estar adiado.
+
 ### Fase 1 — Extrair o serviço (sem mudar resultado)
 
 | ID | Tarefa | Depende | Aceite | Status |
 |---|---|---|---|---|
-| TASK-IA-01 | Esqueleto do repo: FastAPI, Dockerfile, `compose.ia.yml`, CI (lint + testes + build) | — | `GET /saude` responde no compose local | PLANEJADO |
-| TASK-IA-02 | Portar `modelo_llm.py`, validador e reserva por regra de `gerar-insights/app/opiniao` | combinar com a Sessão 02 | Mesmas saídas do gerador atual para o pregão 2026-10-06 (315 dossiês) | PLANEJADO |
-| TASK-IA-03 | `gerar-insights` passa a chamar `POST /opiniao` por HTTP | TASK-IA-02 | `opiniao_ia` idêntica antes/depois; prompt removido do worker | PLANEJADO |
+| TASK-IA-01 | Esqueleto do repo: FastAPI, Dockerfile, `compose.ia.yml` (duas redes, 4.3), CI (lint + testes + build); remover `compose.ia*.yml` da infra | — | `GET /saude` responde no compose local | IMPLEMENTADO (2026-10-07): `/saude` e `/skills` no ar no compose local (container `healthy`, modelo baixado detectado), rede `ia` sem internet conferida, CI só com testes. Falta remover `compose.ia*.yml` da infra |
+| TASK-IA-02 | Portar `modelo_llm.py`, validador e reserva por regra de `gerar-insights/app/opiniao` (contrato com `permitidas` e `risco_calculado`, 5.1) | TASK-IA-01, TASK-IA-05 | Linhas `origem = REGRA` idênticas às do gerador atual nos 315 dossiês de 2026-10-06; linhas `MODELO` passam no mesmo validador | IMPLEMENTADO (2026-10-07, 8e16bf3): `POST /opiniao` com validador e reserva por regra; os 315 dossiês de 2026-10-06 reproduzem o esperado sem divergência (`tests/test_avaliacao.py`); linhas MODELO passam no mesmo validador. Sobrou, fora desta task: com o Ollama em CPU o limite de 180 s estoura e o serviço responde pela regra (ver IA-13/DEC-IA-04) |
+| TASK-IA-03 | `gerar-insights` passa a chamar `POST /opiniao` por HTTP, enviando evidências, `permitidas` e `risco_calculado` | TASK-IA-02 | Linhas `REGRA` de `opiniao_ia` idênticas antes/depois (as de modelo dependem de semente e versão: só precisam passar no validador); prompt removido do worker | EM ANDAMENTO (Sessão 01/feature-migrate no gerar-insights, 2026-10-08) |
 
 ### Fase 2 — Skills
 
 | ID | Tarefa | Depende | Aceite | Status |
 |---|---|---|---|---|
-| TASK-IA-04 | Converter o prompt atual em skills (seção 6.2) | TASK-IA-02 | Conjunto de avaliação não piora | PLANEJADO |
-| TASK-IA-05 | Conjunto de avaliação (`avaliacao/dossies`, `esperado`) e métrica no CI | TASK-IA-01 | CI falha em regressão | PLANEJADO |
-| TASK-IA-06 | Corrigir falhas observadas: contradição sinal x evidência, ids de fator em "o que invalida", excesso de justificativas | TASK-IA-04 | Casos de PETR4/2026-10-06 passam no validador | PLANEJADO |
+| TASK-IA-04 | Converter o prompt atual em skills (seção 6.2) | TASK-IA-02 | Conjunto de avaliação não piora | IMPLEMENTADO (2026-10-08, c44b8f8): 9 skills em `skills/` selecionadas por horizonte e evidências, schema em `formato-resposta/schema.json`, testes verdes (`tests/test_skills.py`). A comparação de qualidade com o modelo contra o prompt embutido foi cancelada por decisão do usuário (priorizar entrega); `python -m avaliacao.rodar --provedor ollama [--sem-skills]` fica disponível para rodar depois. O caminho por regra não muda (315 dossiês sem divergência) |
+| TASK-IA-05 | Conjunto de avaliação (`avaliacao/dossies`, `esperado`) e métrica no CI. Os dossiês saem de `opiniao_ia` (pregão 2026-10-06, `evidencias_json`, risco e permitidas recalculadas pelas regras) | TASK-IA-01 | CI falha em regressão | IMPLEMENTADO (2026-10-07, 8e16bf3): 315 dossiês e esperados em `avaliacao/`, exportados por `gerar-insights/app/opiniao/exportar_avaliacao.py`; `python -m avaliacao.rodar` (provedor `regra` ou `ollama`) e `tests/test_avaliacao.py` no CI falham em regressão |
+| TASK-IA-06 | Corrigir falhas observadas: contradição sinal x evidência, ids de fator em "o que invalida", excesso de justificativas. **Já resolvidas no gerador atual** (prompt 1.2, 2026-10-07: justificativa só com o que sustenta a opinião, máx. 5, e `o_que_invalida` calculado das evidências contrárias); falta portar e cobrir com casos | TASK-IA-02 | Casos de PETR4/2026-10-06 passam no validador | PLANEJADO (Sessão 03, delegado em 2026-10-08) |
 
 ### Fase 3 — Fichas e RAG
 
 | ID | Tarefa | Depende | Aceite | Status |
 |---|---|---|---|---|
-| TASK-IA-07 | Gerador das fichas de **evidência** e **setor** (maior valor, poucas consultas) | DEC-IA-05 | Fichas geradas, hash estável em reexecução | PLANEJADO |
-| TASK-IA-08 | Gerador das fichas de **ativos** e **mercado/regimes** | TASK-IA-07 | ~300 ativos, ≤ 4 KB cada, seção Limitações presente | PLANEJADO |
-| TASK-IA-09 | Fundamentos a partir do glossário/fórmulas do painel e PDFs de estudo | — | Trechos com fonte e seção | PLANEJADO |
-| TASK-IA-10 | Indexador incremental + busca com filtro de ponto no tempo | DEC-IA-02, TASK-IA-07 | Teste: trecho com disponibilidade futura nunca retorna | PLANEJADO |
-| TASK-IA-11 | Orquestrador monta contexto (6.5) e cita `trecho_id` | TASK-IA-10 | Respostas citam fontes; validador confere | PLANEJADO |
-| TASK-IA-12 | Agendamento: anual (DFP), trimestral (ITR), semanal (evidência) na rotina da manhã | TASK-IA-08 | Registro em `etl_execucao` | PLANEJADO |
+| TASK-IA-07 | Gerador das fichas de **evidência** e **setor** (maior valor, poucas consultas) — Sessão 03 | DEC-IA-05 (decidida) | Fichas geradas, hash estável em reexecução | IMPLEMENTADO (Sessão 03, 2026-10-07): `app/fichas/evidencia.py` e `setores.py`; 18 fichas de evidência (16 fatores, momentum 20p semanal, placar das regras) e 39 de setor; reexecução sem mudança de dado regrava 0 (hash estável); tests/fichas |
+| TASK-IA-08 | Gerador das fichas de **ativos** e **mercado/regimes** — Sessão 03. Critério do universo: papéis com fator `LIQUIDEZ_63D` e fundamentos; o banco tem 2.116 códigos no COTAHIST e 221 CNPJs com DFP anual, então "~300" é o teto, não a meta | TASK-IA-07 | ≤ 4 KB por ficha, seção Limitações presente (inclui "eventos corporativos inferidos: 89 registros") | IMPLEMENTADO (Sessão 03, 2026-10-07): `app/fichas/ativos.py` e `mercado.py`; 243 fichas de ativo (LIQUIDEZ_63D + DFP anual; maior 3,7 KB), 17 anos de mercado + `regimes.md`; Limitações com os 89 eventos; ano corrente fora; `disponivel_ate` = maior entrega usada |
+| TASK-IA-09 | Fundamentos a partir do glossário/fórmulas do painel e PDFs de estudo | — | Trechos com fonte e seção | PLANEJADO (Sessão 03, delegado em 2026-10-08) |
+| TASK-IA-10 | Indexador incremental + busca com filtro de ponto no tempo | DEC-IA-02, TASK-IA-07 | Teste: trecho com disponibilidade futura nunca retorna | IMPLEMENTADO (Sessão 03, 2026-10-08): `app/rag/` (trechos, indice SQLite+FTS5, indexador incremental, busca com RRF textual+vetor); `disponivel_ate` por trecho (linha anual = coluna Disp. da ficha); 4.530 trechos, reindexação sem mudança regrava 0; teste de trecho futuro em tests/rag. Sem `nomic-embed-text` baixado, a busca é só textual |
+| TASK-IA-11 | Orquestrador monta contexto (6.5) e cita `trecho_id` | TASK-IA-10 | Respostas citam fontes; validador confere | IMPLEMENTADO (2026-10-08): contexto com trechos via `app.rag` real (`ContextoRag`: leitura por metadado + busca textual, filtro de ponto no tempo), citação por `trecho_id` validada e `fontes` na resposta; verificado com o índice real (PETR4 em 2026-10-06 devolve 4 trechos) e `POST /indexar` indexando 4.530 trechos no container. Busca só textual até o nomic-embed-text ser baixado |
+| TASK-IA-12 | Agendamento: anual (DFP), trimestral (ITR), semanal (evidência) na rotina da manhã | TASK-IA-08 | Registro em `etl_execucao` | EM ANDAMENTO (Sessão 03/feature-esqueleto, 2026-10-07) |
 
 ### Fase 4 — Modelo e painel
 
 | ID | Tarefa | Depende | Aceite | Status |
 |---|---|---|---|---|
-| TASK-IA-13 | Trocar para 7b com GPU e comparar no conjunto de avaliação | TASK-IA-05, DEC-IA-04 | Métrica igual ou melhor; latência dentro de NFR-IA-02 | PLANEJADO |
-| TASK-IA-14 | Painel: mostrar fontes citadas no cartão "Opinião por horizonte" | DEC-IA-03 | Cada justificativa com link para a ficha/trecho | PLANEJADO |
+| TASK-IA-13 | Trocar para 7b com GPU e comparar no conjunto de avaliação | TASK-IA-05, DEC-IA-04 | Métrica igual ou melhor; latência dentro de NFR-IA-02 | PLANEJADO (Sessão 03, delegado em 2026-10-08) |
+| TASK-IA-14 | Gestor e painel: aceitar item de `justificativa_json` com `trecho_id` e mostrar fontes no cartão "Opinião por horizonte" — Sessão 01 | DEC-IA-03 (decidida), TASK-IA-11 | Cada justificativa com link para a ficha/trecho | EM ANDAMENTO (Sessão 02, delegado em 2026-10-08): serviço pronto — item que cita trecho leva `fonte` e `trecho` congelados na geração (sem link: a rede `ia` é interna e o gestor não a alcança); gestor/painel aceitam `trecho_id` (Sessão 01, parte 1); falta gravar o item inteiro (IA-03), expor `fonte`/`trecho` no GET e mostrar no cartão (combinado com a Sessão 01) |
 
 ---
 
@@ -290,7 +297,7 @@ insider-ia-b3-ecossytem/
 ## 11. Verificação
 
 - `pytest -q` e `ruff check app tests`.
-- `docker compose -f ../infra-b3-ecossytem/docker-compose-local.yml -f compose.ia.yml --profile ia up -d` e `curl http://localhost:8000/saude` (dev).
+- `docker compose -f ../infra-b3-ecossytem/docker-compose-local.yml -f compose.ia.yml --profile ia up -d` e, com `exec ia-opiniao python -c "import urllib.request;print(urllib.request.urlopen('http://127.0.0.1:8000/saude').read().decode())"`, conferir `/saude` (a rede `ia` é interna e não publica porta no host).
 - Avaliação: `python -m avaliacao.rodar` compara com `esperado/` e imprime acerto de formato, taxa de reserva por regra e citações inválidas.
 
 ## 12. Aviso regulatório

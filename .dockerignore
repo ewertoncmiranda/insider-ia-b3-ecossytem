@@ -1,0 +1,14 @@
+# A imagem leva so o codigo, as skills e as fichas; configuracao chega por variavel de ambiente.
+.git
+.github
+.env
+.env.*
+!.env.example
+env/
+*.pem
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+tests/
+avaliacao/
