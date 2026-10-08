@@ -1,8 +1,8 @@
 """Validador da resposta do modelo (REQ-IA-03).
 
 A resposta so vale se: opiniao dentro das permitidas, risco igual ao calculado, cada item de
-justificativa citando uma evidencia real, nenhum numero fora da entrada, sem vocabulario de
-promessa e no maximo 5 itens. `o_que_invalida` nao e do modelo: sai de `condicoes_contrarias`.
+justificativa citando uma evidencia real (e nenhuma em sentido contrario ao da opiniao), nenhum
+numero fora da entrada, sem vocabulario de promessa e no maximo 5 itens. `o_que_invalida` nao e do modelo: sai de `condicoes_contrarias`.
 """
 
 from __future__ import annotations
@@ -96,6 +96,12 @@ def validar(resposta: object, pedido: PedidoOpiniao,
         erros.append("SINAL_POSITIVO sem citar evidência favorável")
     if opiniao == NEGATIVO and not any(e.direcao < 0 for e in citadas):
         erros.append("SINAL_NEGATIVO sem citar evidência desfavorável")
+    # Contradicao sinal x evidencia (TASK-IA-06, PETR4/2026-10-06): a justificativa so traz o que
+    # sustenta a opiniao; o que aponta no sentido oposto ja vai para `o_que_invalida`.
+    sentido = {POSITIVO: 1, NEGATIVO: -1}.get(opiniao)
+    contrarias = [e.id for e in citadas if sentido is not None and e.direcao == -sentido]
+    if contrarias:
+        erros.append(f"{opiniao} justificado com evidência contrária: {contrarias}")
     juntos = " ".join([str(j.get("leitura", "")) for j in justificativa] + invalida).lower()
     achadas = [p for p in PALAVRAS_PROIBIDAS if p in juntos]
     if achadas:
