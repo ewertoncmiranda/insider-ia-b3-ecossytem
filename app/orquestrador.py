@@ -22,7 +22,8 @@ MODELO_REGRA = "regra"
 log = logging.getLogger("ia-opiniao")
 
 
-def _consultar(provedor: ProvedorLLM, pedido: PedidoOpiniao) -> tuple[dict | None, int, str]:
+def _consultar(provedor: ProvedorLLM, pedido: PedidoOpiniao, sistema: str,
+               schema: dict) -> tuple[dict | None, int, str]:
     """(resposta valida | None, tentativas feitas, motivo da reserva quando None)."""
     mensagem = montar_mensagem(pedido)
     erros: list[str] = []
@@ -31,7 +32,7 @@ def _consultar(provedor: ProvedorLLM, pedido: PedidoOpiniao) -> tuple[dict | Non
             mensagem + "\n\nSua resposta anterior foi rejeitada: " + "; ".join(erros)
             + ". Corrija e responda de novo.")
         try:
-            bruto = provedor.gerar(SISTEMA, usuario, SCHEMA_DA_RESPOSTA)
+            bruto = provedor.gerar(sistema, usuario, schema)
         except ErroDoProvedor as erro:
             return None, tentativa, f"provedor: {erro}"
         try:
@@ -45,7 +46,9 @@ def _consultar(provedor: ProvedorLLM, pedido: PedidoOpiniao) -> tuple[dict | Non
     return None, TENTATIVAS, "rejeitada: " + "; ".join(erros)
 
 
-def opinar(pedido: PedidoOpiniao, provedor: ProvedorLLM | None, skills_versao: str) -> RespostaOpiniao:
+def opinar(pedido: PedidoOpiniao, provedor: ProvedorLLM | None, skills_versao: str,
+           sistema: str | None = None, schema: dict | None = None) -> RespostaOpiniao:
+    """`sistema` e `schema` vem das skills selecionadas (TASK-IA-04); sem skills, o prompt embutido."""
     origem, tentativas, motivo = ORIGEM_REGRA, 0, ""
     nome_modelo = provedor.nome if provedor is not None else MODELO_REGRA
     corpo: dict | None = None
@@ -54,7 +57,7 @@ def opinar(pedido: PedidoOpiniao, provedor: ProvedorLLM | None, skills_versao: s
     elif list(pedido.permitidas) == [SEM_BASE]:
         motivo = "só SEM_BASE permitido"  # nada a escolher: dispensa a chamada
     else:
-        corpo, tentativas, motivo = _consultar(provedor, pedido)
+        corpo, tentativas, motivo = _consultar(provedor, pedido, sistema or SISTEMA, schema or SCHEMA_DA_RESPOSTA)
         if corpo is not None:
             origem = ORIGEM_MODELO
     if corpo is None:

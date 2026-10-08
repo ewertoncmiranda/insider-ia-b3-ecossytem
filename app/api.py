@@ -53,7 +53,10 @@ def opiniao(pedido: PedidoOpiniao) -> RespostaOpiniao:
     settings = Settings.do_ambiente()
     conjunto = skills_mod.listar(settings.dir_skills)
     provedor = OllamaProvedor(settings.ollama_url, settings.modelo_chat, timeout_s=settings.timeout_modelo_s)
-    return opinar(pedido, provedor, skills_mod.versao_do_conjunto(conjunto))
+    escolhidas = skills_mod.selecionar(conjunto, pedido.horizonte_pregoes, [e.id for e in pedido.evidencias])
+    return opinar(pedido, provedor, skills_mod.versao_do_conjunto(conjunto),
+                  sistema=skills_mod.montar_sistema(escolhidas) or None,
+                  schema=skills_mod.schema_da_resposta(settings.dir_skills))
 
 
 @app.get("/skills")

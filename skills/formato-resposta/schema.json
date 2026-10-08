@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "properties": {
+    "opiniao": {"type": "string", "enum": ["SINAL_POSITIVO", "SINAL_NEGATIVO", "SINAL_NEUTRO", "SEM_BASE"]},
+    "risco": {"type": "string", "enum": ["RISCO_BAIXO", "RISCO_MEDIO", "RISCO_ALTO"]},
+    "justificativa": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {"evidencia_id": {"type": "string"}, "leitura": {"type": "string"}},
+        "required": ["evidencia_id", "leitura"]
+      }
+    }
+  },
+  "required": ["opiniao", "risco", "justificativa"]
+}

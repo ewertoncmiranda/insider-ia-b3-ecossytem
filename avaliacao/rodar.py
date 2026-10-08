@@ -14,6 +14,7 @@ import json
 import sys
 from pathlib import Path
 
+from app import skills as skills_mod
 from app.config import Settings
 from app.modelos import PedidoOpiniao
 from app.orquestrador import opinar
@@ -43,13 +44,19 @@ def sem_chaves_de_identificacao(esperado: dict) -> dict:
     return {k: v for k, v in esperado.items() if k not in ("simbolo", "horizonte_pregoes")}
 
 
-def rodar(provedor: str, limite: int | None = None) -> dict:
-    pares = carregar()[:limite]
+def rodar(provedor: str, limite: int | None = None, com_skills: bool = True) -> dict:
+    pares = carregar()
+    if provedor == "ollama":
+        # So conta dossie em que ha o que escolher: SEM_BASE forcado nunca chama o modelo.
+        pares = [(p, e) for p, e in pares if list(p.permitidas) != ["SEM_BASE"]]
+    pares = pares[:limite]
     metricas = {"total": len(pares), "divergentes_da_regra": 0, "invalidos_no_validador": 0,
                 "reserva_por_regra": 0, "citacoes_invalidas": 0, "formato_ok": 0}
     ollama = None
+    cfg = Settings.do_ambiente()
+    conjunto = skills_mod.listar(cfg.dir_skills) if com_skills else []
+    versao = skills_mod.versao_do_conjunto(conjunto)
     if provedor == "ollama":
-        cfg = Settings.do_ambiente()
         ollama = OllamaProvedor(cfg.ollama_url, cfg.modelo_chat, timeout_s=cfg.timeout_modelo_s)
     for pedido, esperado in pares:
         if provedor == "regra":
@@ -60,7 +67,9 @@ def rodar(provedor: str, limite: int | None = None) -> dict:
                 metricas["invalidos_no_validador"] += 1
             metricas["formato_ok"] += 1
         else:
-            resposta = opinar(pedido, ollama, "skills@avaliacao")
+            escolhidas = skills_mod.selecionar(conjunto, pedido.horizonte_pregoes, [e.id for e in pedido.evidencias])
+            resposta = opinar(pedido, ollama, versao, sistema=skills_mod.montar_sistema(escolhidas) or None,
+                              schema=skills_mod.schema_da_resposta(cfg.dir_skills) if conjunto else None)
             metricas["formato_ok"] += 1
             if resposta.origem == "REGRA":
                 metricas["reserva_por_regra"] += 1
@@ -73,8 +82,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Avaliacao offline do servico de IA")
     parser.add_argument("--provedor", choices=["regra", "ollama"], default="regra")
     parser.add_argument("--limite", type=int)
+    parser.add_argument("--sem-skills", action="store_true", help="usa o prompt embutido (linha de base)")
     argumentos = parser.parse_args(argv)
-    metricas = rodar(argumentos.provedor, argumentos.limite)
+    metricas = rodar(argumentos.provedor, argumentos.limite, not argumentos.sem_skills)
     print(json.dumps(metricas, ensure_ascii=False, indent=2))
     ruim = metricas["divergentes_da_regra"] or metricas["invalidos_no_validador"]
     return 1 if argumentos.provedor == "regra" and ruim else 0
