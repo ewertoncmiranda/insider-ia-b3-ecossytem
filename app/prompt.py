@@ -46,6 +46,36 @@ SISTEMA = (
 )
 
 
+def schema_do_ativo(schema_do_item: dict) -> dict:
+    """CTR-IA-01 v1.1: a resposta e `itens[]`, cada um com `horizonte_pregoes` + o schema de um horizonte."""
+    item = json.loads(json.dumps(schema_do_item))
+    item.setdefault("properties", {})["horizonte_pregoes"] = {"type": "integer"}
+    item["required"] = ["horizonte_pregoes", *[c for c in item.get("required", []) if c != "horizonte_pregoes"]]
+    return {"type": "object", "properties": {"itens": {"type": "array", "items": item}}, "required": ["itens"]}
+
+
+INSTRUCAO_DO_ATIVO = (
+    "\n\nVocê recebe VÁRIOS horizontes do mesmo ativo. Responda um objeto {\"itens\": [...]} com UM item "
+    "por horizonte recebido, cada um com 'horizonte_pregoes' igual ao do pedido. Aplique as regras "
+    "acima a cada horizonte separadamente: 'permitidas', 'risco_calculado' e 'evidencias' são as daquele "
+    "horizonte."
+)
+
+
+def montar_mensagem_ativo(pedidos: list[PedidoOpiniao], trechos: list[TrechoDeContexto] | None = None) -> str:
+    """Mensagem v1.1: um bloco por horizonte (mesmo recorte da v1.0) e os trechos uma vez so."""
+    blocos = []
+    for pedido in pedidos:
+        bloco = json.loads(montar_mensagem(pedido))
+        bloco.pop("ativo", None)
+        bloco["horizonte_pregoes"] = pedido.horizonte_pregoes
+        blocos.append(bloco)
+    corpo = {"ativo": pedidos[0].simbolo if pedidos else "", "horizontes": blocos}
+    if trechos:
+        corpo["trechos"] = [{"trecho_id": t.trecho_id, "texto": t.texto} for t in trechos]
+    return json.dumps(corpo, ensure_ascii=False)
+
+
 def montar_mensagem(pedido: PedidoOpiniao, trechos: list[TrechoDeContexto] | None = None) -> str:
     """Mensagem do usuario: so dados do pedido, em JSON fechado; direcionais primeiro, no maximo 8."""
     ordenadas = sorted(pedido.evidencias, key=lambda e: (e.direcao == 0, e.id))
