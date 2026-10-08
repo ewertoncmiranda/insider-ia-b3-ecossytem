@@ -249,7 +249,7 @@ Tamanho-alvo: 2–4 KB por ficha de ativo; acervo total na casa de poucos MB, ve
 
 | ID | Tarefa | Depende | Aceite | Status |
 |---|---|---|---|---|
-| TASK-IA-04 | Converter o prompt atual em skills (seção 6.2) | TASK-IA-02 | Conjunto de avaliação não piora | PLANEJADO (Sessão 02, delegado em 2026-10-08) |
+| TASK-IA-04 | Converter o prompt atual em skills (seção 6.2) | TASK-IA-02 | Conjunto de avaliação não piora | EM ANDAMENTO (Sessão 02, c44b8f8): 9 skills em `skills/` (conformidade-cvm, formato-resposta + schema.json, horizonte-curto/medio/longo, leitura-valuation/tecnica/fatores/eventos), selecionadas por horizonte e evidências; testes verdes (`tests/test_skills.py`); falta o resultado da comparação com o prompt embutido (`python -m avaliacao.rodar --provedor ollama [--sem-skills]`, GPU do Windows) |
 | TASK-IA-05 | Conjunto de avaliação (`avaliacao/dossies`, `esperado`) e métrica no CI. Os dossiês saem de `opiniao_ia` (pregão 2026-10-06, `evidencias_json`, risco e permitidas recalculadas pelas regras) | TASK-IA-01 | CI falha em regressão | IMPLEMENTADO (2026-10-07, 8e16bf3): 315 dossiês e esperados em `avaliacao/`, exportados por `gerar-insights/app/opiniao/exportar_avaliacao.py`; `python -m avaliacao.rodar` (provedor `regra` ou `ollama`) e `tests/test_avaliacao.py` no CI falham em regressão |
 | TASK-IA-06 | Corrigir falhas observadas: contradição sinal x evidência, ids de fator em "o que invalida", excesso de justificativas. **Já resolvidas no gerador atual** (prompt 1.2, 2026-10-07: justificativa só com o que sustenta a opinião, máx. 5, e `o_que_invalida` calculado das evidências contrárias); falta portar e cobrir com casos | TASK-IA-02 | Casos de PETR4/2026-10-06 passam no validador | PLANEJADO (Sessão 03, delegado em 2026-10-08) |
 
@@ -261,7 +261,7 @@ Tamanho-alvo: 2–4 KB por ficha de ativo; acervo total na casa de poucos MB, ve
 | TASK-IA-08 | Gerador das fichas de **ativos** e **mercado/regimes** — Sessão 03. Critério do universo: papéis com fator `LIQUIDEZ_63D` e fundamentos; o banco tem 2.116 códigos no COTAHIST e 221 CNPJs com DFP anual, então "~300" é o teto, não a meta | TASK-IA-07 | ≤ 4 KB por ficha, seção Limitações presente (inclui "eventos corporativos inferidos: 89 registros") | IMPLEMENTADO (Sessão 03, 2026-10-07): `app/fichas/ativos.py` e `mercado.py`; 243 fichas de ativo (LIQUIDEZ_63D + DFP anual; maior 3,7 KB), 17 anos de mercado + `regimes.md`; Limitações com os 89 eventos; ano corrente fora; `disponivel_ate` = maior entrega usada |
 | TASK-IA-09 | Fundamentos a partir do glossário/fórmulas do painel e PDFs de estudo | — | Trechos com fonte e seção | PLANEJADO (Sessão 03, delegado em 2026-10-08) |
 | TASK-IA-10 | Indexador incremental + busca com filtro de ponto no tempo | DEC-IA-02, TASK-IA-07 | Teste: trecho com disponibilidade futura nunca retorna | EM ANDAMENTO (Sessão 03/feature-esqueleto, 2026-10-08) |
-| TASK-IA-11 | Orquestrador monta contexto (6.5) e cita `trecho_id` | TASK-IA-10 | Respostas citam fontes; validador confere | PLANEJADO (Sessão 02, delegado em 2026-10-08) |
+| TASK-IA-11 | Orquestrador monta contexto (6.5) e cita `trecho_id` | TASK-IA-10 | Respostas citam fontes; validador confere | EM ANDAMENTO (Sessão 02): contexto com trechos (`app/contexto.py`), citação por `trecho_id` validada (trecho inexistente ou número fora do trecho = rejeitada) e `fontes` na resposta, testado com contexto simulado (9d7893e); falta ligar ao `app.rag` real da IA-10 (adaptador `ContextoRag` já pronto) e medir com fichas indexadas |
 | TASK-IA-12 | Agendamento: anual (DFP), trimestral (ITR), semanal (evidência) na rotina da manhã | TASK-IA-08 | Registro em `etl_execucao` | EM ANDAMENTO (Sessão 03/feature-esqueleto, 2026-10-07) |
 
 ### Fase 4 — Modelo e painel
@@ -269,7 +269,7 @@ Tamanho-alvo: 2–4 KB por ficha de ativo; acervo total na casa de poucos MB, ve
 | ID | Tarefa | Depende | Aceite | Status |
 |---|---|---|---|---|
 | TASK-IA-13 | Trocar para 7b com GPU e comparar no conjunto de avaliação | TASK-IA-05, DEC-IA-04 | Métrica igual ou melhor; latência dentro de NFR-IA-02 | PLANEJADO (Sessão 03, delegado em 2026-10-08) |
-| TASK-IA-14 | Gestor e painel: aceitar item de `justificativa_json` com `trecho_id` e mostrar fontes no cartão "Opinião por horizonte" — Sessão 01 | DEC-IA-03 (decidida), TASK-IA-11 | Cada justificativa com link para a ficha/trecho | PLANEJADO (Sessão 02, delegado em 2026-10-08) |
+| TASK-IA-14 | Gestor e painel: aceitar item de `justificativa_json` com `trecho_id` e mostrar fontes no cartão "Opinião por horizonte" — Sessão 01 | DEC-IA-03 (decidida), TASK-IA-11 | Cada justificativa com link para a ficha/trecho | EM ANDAMENTO (Sessão 02, delegado em 2026-10-08): serviço pronto — item que cita trecho leva `fonte` e `trecho` congelados na geração (sem link: a rede `ia` é interna e o gestor não a alcança); gestor/painel aceitam `trecho_id` (Sessão 01, parte 1); falta gravar o item inteiro (IA-03), expor `fonte`/`trecho` no GET e mostrar no cartão (combinado com a Sessão 01) |
 
 ---
 
