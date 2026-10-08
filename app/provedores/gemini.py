@@ -15,7 +15,7 @@ import re
 from collections.abc import Iterator, Sequence
 from typing import Any
 
-from app.provedores.ollama import ErroDoProvedor
+from app.provedores.base import ErroDoProvedor
 
 try:  # vem com o google-genai; sem ele o modulo ainda importa (testes com cliente falso)
     import httpx

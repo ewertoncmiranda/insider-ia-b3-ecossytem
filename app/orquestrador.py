@@ -1,8 +1,8 @@
 """Orquestrador: chama o modelo so quando ha o que escolher, valida e cai na regra se preciso.
 
-Fluxo (SPEC 4.2/13.2): pedido -> (permitidas so SEM_BASE? regra) -> cadeia de provedores (Gemini ->
-Ollama, ate 2 tentativas so no local) -> validador -> resposta | reserva por regra. Nenhuma excecao do provedor
-sobe: sem Ollama, o servico continua respondendo (origem REGRA).
+Fluxo (SPEC 4.2/13.2): pedido -> (permitidas so SEM_BASE? regra) -> cadeia de modelos Gemini (uma
+tentativa por modelo) -> validador -> resposta | reserva por regra. Nenhuma excecao do provedor sobe:
+sem Gemini (sem chave, cota ou erro), o servico continua respondendo (origem REGRA).
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from app.modelos import (ORIGEM_MODELO, ORIGEM_REGRA, SEM_BASE, CotaDaResposta, 
 from app.prompt import (INSTRUCAO_DO_ATIVO, SCHEMA_DA_RESPOSTA, SISTEMA, montar_mensagem, montar_mensagem_ativo,
                         schema_do_ativo)
 from app.provedores.cadeia import GEMINI, Cadeia, como_cadeia
-from app.provedores.ollama import ErroDoProvedor, ProvedorLLM
+from app.provedores.base import ErroDoProvedor, ProvedorLLM
 from app.regras import resposta_de_regra
 from app.validador import validar
 

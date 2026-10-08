@@ -94,8 +94,6 @@ def ambiente(tmp_path, monkeypatch, caplog):
     monkeypatch.setenv("GEMINI_API_KEY", CHAVE)
     monkeypatch.setenv("GEMINI_MODELOS", "gemini-teste-1,gemini-teste-2")
     monkeypatch.setenv("GEMINI_LIMITES", "15/500,5/20")
-    monkeypatch.setenv("PROVEDORES_LOTE", "gemini")  # sem Ollama: a cadeia cai direto na regra
-    monkeypatch.setenv("OLLAMA_URL", "http://127.0.0.1:1")
     monkeypatch.setenv("RAG_INDICE", str(tmp_path / "rag.sqlite"))  # sem indice; cota.sqlite aqui
     monkeypatch.setattr(cadeia_mod, "_GOVERNADOR", None)
     caplog.set_level(logging.DEBUG)

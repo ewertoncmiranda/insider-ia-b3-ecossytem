@@ -3,7 +3,7 @@
 Fluxo:
   1. Valida entrada.
   2. Guarda (limites diário e intervalo).
-  3. Verifica Gemini disponível (DEC-IA-08: sem fallback para Ollama).
+  3. Verifica Gemini disponível (DEC-IA-08: sem Gemini, chat indisponivel).
   4. Carrega histórico da sessão.
   5. Monta contexto (RAG + ativo).
   6. Resolve ferramentas (até 4 chamadas ao gestor, se o modelo pedir).
@@ -159,7 +159,7 @@ def chat(pedido: PedidoChat) -> StreamingResponse:
             # 7. Construir mensagens (histórico + nova mensagem do usuário)
             mensagens = list(historico) + [{"papel": "usuario", "texto": pedido.mensagem}]
 
-            # 8. Tentar cada provedor (sem fallback para Ollama, DEC-IA-08)
+            # 8. Tentar cada provedor (so Gemini, DEC-IA-08/11)
             resposta_texto: str | None = None
             modelo_usado: str | None = None
             regenerada = False

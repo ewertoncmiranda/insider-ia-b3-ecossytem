@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from app.cota import GovernadorCota
 from app.manchetes import resumo as mod
 from app.provedores.cadeia import GEMINI, Cadeia, Elo
-from app.provedores.ollama import ErroDoProvedor
+from app.provedores.base import ErroDoProvedor
 
 MANCHETES = [
     {"titulo": "Petrobras anuncia dividendos", "link": "https://n.test/1", "fonte": "Valor", "simbolos": ["PETR4"]},

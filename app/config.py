@@ -6,7 +6,9 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-PROVEDORES_VALIDOS = ("gemini", "ollama")
+# So Gemini desde 2026-10-08 (DEC-IA-11). "ollama" num .env antigo e ignorado, nao derruba o servico.
+PROVEDORES_VALIDOS = ("gemini",)
+PROVEDORES_REMOVIDOS = ("ollama",)
 MODELOS_GEMINI_PADRAO = "gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.8-flash"
 LIMITES_GEMINI_PADRAO = "15/500,15/500,5/20"
 
@@ -58,7 +60,7 @@ def _limites(texto: str, quantidade: int, reserva: LimiteDeModelo) -> tuple[Limi
 
 
 def _provedores(nome: str, padrao: str) -> tuple[str, ...]:
-    ordem = _lista(os.getenv(nome, padrao).lower())
+    ordem = tuple(p for p in _lista(os.getenv(nome, padrao).lower()) if p not in PROVEDORES_REMOVIDOS)
     desconhecidos = [p for p in ordem if p not in PROVEDORES_VALIDOS]
     if desconhecidos:
         raise ConfiguracaoInvalida(f"{nome} tem provedor desconhecido: {', '.join(desconhecidos)}")
@@ -67,21 +69,16 @@ def _provedores(nome: str, padrao: str) -> tuple[str, ...]:
 
 @dataclass(frozen=True)
 class Settings:
-    ollama_url: str
-    modelo_chat: str
-    modelo_embed: str
-    vetores_url: str | None
     rag_indice: Path
     dir_skills: Path
     dir_conhecimento: Path
-    timeout_modelo_s: int
     log_level: str
     # Gemini (SPEC 13.5, DEC-IA-09/10). A chave nunca aparece em repr, log, resposta ou /saude.
     gemini_api_key: str = field(default="", repr=False)
     gemini_modelos: tuple[str, ...] = ()
     gemini_limites: tuple[LimiteDeModelo, ...] = ()
     gemini_timeout_s: int = 30
-    provedores_lote: tuple[str, ...] = ("gemini", "ollama")
+    provedores_lote: tuple[str, ...] = ("gemini",)
     provedores_chat: tuple[str, ...] = ("gemini",)
     cota_chat_pct: int = 40
     cota_card_pct: int = 20
@@ -104,20 +101,15 @@ class Settings:
         if sum(cotas) != 100:
             raise ConfiguracaoInvalida(f"COTA_CHAT_PCT + COTA_CARD_PCT + COTA_LOTE_PCT deve somar 100, soma {sum(cotas)}")
         return cls(
-            ollama_url=os.getenv("OLLAMA_URL", "http://ollama:11434").rstrip("/"),
-            modelo_chat=os.getenv("MODELO_CHAT", "qwen2.5:0.5b-instruct"),
-            modelo_embed=os.getenv("MODELO_EMBED", "nomic-embed-text"),
-            vetores_url=os.getenv("VETORES_URL") or None,
             rag_indice=Path(os.getenv("RAG_INDICE", str(raiz / "var" / "rag.sqlite"))),
             dir_skills=Path(os.getenv("DIR_SKILLS", str(raiz / "skills"))),
             dir_conhecimento=Path(os.getenv("DIR_CONHECIMENTO", str(raiz / "conhecimento"))),
-            timeout_modelo_s=int(os.getenv("TIMEOUT_MODELO_S", "180")),
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip(),
             gemini_modelos=modelos,
             gemini_limites=_limites(os.getenv("GEMINI_LIMITES", LIMITES_GEMINI_PADRAO), len(modelos), reserva),
             gemini_timeout_s=_inteiro("GEMINI_TIMEOUT_S", "30", 1),
-            provedores_lote=_provedores("PROVEDORES_LOTE", "gemini,ollama"),
+            provedores_lote=_provedores("PROVEDORES_LOTE", "gemini"),
             provedores_chat=_provedores("PROVEDORES_CHAT", "gemini"),
             cota_chat_pct=cotas[0],
             cota_card_pct=cotas[1],

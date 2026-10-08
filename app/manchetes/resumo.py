@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 from app.config import Settings
 from app.modelos import ORIGEM_MODELO, ORIGEM_REGRA
 from app.provedores.cadeia import Cadeia, montar_cadeia
-from app.provedores.ollama import ErroDoProvedor
+from app.provedores.base import ErroDoProvedor
 from app.validador import PALAVRAS_PROIBIDAS
 
 log = logging.getLogger("ia-opiniao")

@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import json
 import sqlite3
 from datetime import datetime, timezone
-import urllib.error
-import urllib.request
 
 from fastapi import FastAPI, HTTPException
 
@@ -15,7 +12,7 @@ from app.config import Settings
 from app.contexto import ContextoRag
 from app.modelos import PedidoOpiniao, PedidoOpiniaoAtivo, RespostaOpiniao, RespostaOpiniaoAtivo
 from app.orquestrador import opinar, opinar_ativo
-from app.provedores.cadeia import montar_cadeia
+from app.provedores.cadeia import governador_padrao, montar_cadeia
 
 from app.chat.api import router as chat_router  # noqa: E402
 from app.ativo.rotas import rotas as ativo_rotas  # noqa: E402
@@ -46,27 +43,36 @@ def _estado_do_indice(settings: Settings) -> dict:
     return {"trechos": int(total), "ultima_indexacao": quando}
 
 
-def _estado_do_ollama(settings: Settings) -> dict:
-    """Pergunta ao Ollama quais modelos tem e se o de chat esta baixado. Nunca levanta."""
+def _estado_do_gemini(settings: Settings) -> tuple[dict, dict]:
+    """Blocos `provedores` e `cota` do /saude (SPEC 13.3). Nunca levanta e nunca expoe a chave."""
+    provedores = {"ordem_lote": list(settings.provedores_lote), "ordem_chat": list(settings.provedores_chat),
+                  "gemini": {"configurado": settings.gemini_configurado, "modelos": []}}
+    cota: dict = {b: {"restante_hoje": None} for b in ("chat", "card", "lote")}
+    if not settings.gemini_configurado:
+        return provedores, cota
+    governador = governador_padrao(settings)
     try:
-        with urllib.request.urlopen(f"{settings.ollama_url}/api/tags", timeout=3) as resposta:  # noqa: S310
-            nomes = [m.get("name") for m in json.loads(resposta.read()).get("models", [])]
-    except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError):
-        return {"alcancavel": False, "modelo_chat_baixado": False}
-    return {"alcancavel": True, "modelo_chat_baixado": settings.modelo_chat in nomes}
+        provedores["gemini"]["modelos"] = governador.estado_modelos()
+        cota = {b: {"restante_hoje": governador.restante(b)} for b in ("chat", "card", "lote")}
+    except Exception:  # noqa: BLE001 - governador indisponivel (SemGovernador ou SQLite fora): so o basico
+        provedores["gemini"]["modelos"] = [{"nome": m} for m in settings.gemini_modelos]
+    return provedores, cota
 
 
 @app.get("/saude")
 def saude() -> dict:
-    """Sempre 200 enquanto o processo vive; `status` diz se o conjunto esta pronto para opinar."""
+    """Sempre 200 enquanto o processo vive; `status` OK quando o Gemini esta configurado (unico provedor).
+
+    `modelo` e a identidade que o worker grava com a opiniao: o primeiro modelo Gemini, ou `regra`.
+    """
     settings = Settings.do_ambiente()
     conjunto = skills_mod.listar(settings.dir_skills)
-    ollama = _estado_do_ollama(settings)
-    pronto = ollama["alcancavel"] and ollama["modelo_chat_baixado"]
+    provedores, cota = _estado_do_gemini(settings)
     return {
-        "status": "OK" if pronto else "DEGRADADO",
-        "modelo": settings.modelo_chat,
-        "ollama": ollama,
+        "status": "OK" if settings.gemini_configurado else "DEGRADADO",
+        "modelo": settings.gemini_modelos[0] if settings.gemini_configurado else "regra",
+        "provedores": provedores,
+        "cota": cota,
         "skills_versao": skills_mod.versao_do_conjunto(conjunto),
         "skills": len(conjunto),
         "indice": _estado_do_indice(settings),
@@ -110,15 +116,13 @@ def opiniao_do_ativo(pedido: PedidoOpiniaoAtivo) -> RespostaOpiniaoAtivo:
 
 @app.post("/indexar")
 def indexar_conhecimento() -> dict:
-    """REQ-IA-06: (re)indexa as fichas alteradas (por hash do trecho). Sem Ollama, so indice textual."""
+    """REQ-IA-06: (re)indexa as fichas alteradas (por hash do trecho). Indice so textual (FTS5)."""
     settings = Settings.do_ambiente()
     try:
-        from app.rag import embeddings  # noqa: PLC0415 - modulo da TASK-IA-10
-        from app.rag.indexador import indexar  # noqa: PLC0415
+        from app.rag.indexador import indexar  # noqa: PLC0415 - modulo da TASK-IA-10
     except ImportError as erro:
         raise HTTPException(status_code=501, detail=f"indexador indisponivel: {erro}") from erro
-    embedder = embeddings.criar(settings.ollama_url, settings.modelo_embed)
-    resumo = indexar(settings.dir_conhecimento, settings.rag_indice, embedder)
+    resumo = indexar(settings.dir_conhecimento, settings.rag_indice, None)
     return {"indice": str(settings.rag_indice.name), **{k: getattr(resumo, k) for k in
             ("novos", "removidos", "inalterados", "com_vetor", "total") if hasattr(resumo, k)}}
 

@@ -1,10 +1,10 @@
 """Avaliacao offline (NFR-IA-05): roda o conjunto fixo de dossies e imprime as metricas.
 
-    python -m avaliacao.rodar [--provedor regra|ollama] [--limite N]
+    python -m avaliacao.rodar [--provedor regra|gemini] [--limite N]
 
 `regra` (padrao) nao usa modelo: confere que a reserva por regra reproduz `esperado/` byte a byte e
-que todo esperado passa no validador. `ollama` pergunta ao modelo (OLLAMA_URL, MODELO_CHAT) e mede
-formato valido, taxa de reserva por regra e citacoes invalidas. Sai com codigo 1 se `regra` divergir.
+que todo esperado passa no validador. `gemini` pergunta a cadeia de modelos Gemini (GEMINI_API_KEY,
+GEMINI_MODELOS; gasta cota do balde `lote`) e mede formato valido, taxa de reserva por regra e citacoes invalidas. Sai com codigo 1 se `regra` divergir.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from app import skills as skills_mod
 from app.config import Settings
 from app.modelos import PedidoOpiniao
 from app.orquestrador import opinar
-from app.provedores.ollama import OllamaProvedor
+from app.provedores.cadeia import montar_cadeia
 from app.regras import resposta_de_regra
 from app.validador import validar
 
@@ -46,18 +46,20 @@ def sem_chaves_de_identificacao(esperado: dict) -> dict:
 
 def rodar(provedor: str, limite: int | None = None, com_skills: bool = True) -> dict:
     pares = carregar()
-    if provedor == "ollama":
+    if provedor == "gemini":
         # So conta dossie em que ha o que escolher: SEM_BASE forcado nunca chama o modelo.
         pares = [(p, e) for p, e in pares if list(p.permitidas) != ["SEM_BASE"]]
     pares = pares[:limite]
     metricas = {"total": len(pares), "divergentes_da_regra": 0, "invalidos_no_validador": 0,
                 "reserva_por_regra": 0, "citacoes_invalidas": 0, "formato_ok": 0}
-    ollama = None
+    cadeia = None
     cfg = Settings.do_ambiente()
     conjunto = skills_mod.listar(cfg.dir_skills) if com_skills else []
     versao = skills_mod.versao_do_conjunto(conjunto)
-    if provedor == "ollama":
-        ollama = OllamaProvedor(cfg.ollama_url, cfg.modelo_chat, timeout_s=cfg.timeout_modelo_s)
+    if provedor == "gemini":
+        cadeia = montar_cadeia(cfg, "lote")
+        if cadeia is None:
+            raise SystemExit("Gemini nao configurado (GEMINI_API_KEY/GEMINI_MODELOS)")
     for pedido, esperado in pares:
         if provedor == "regra":
             if resposta_de_regra(pedido) != sem_chaves_de_identificacao(esperado):
@@ -68,7 +70,7 @@ def rodar(provedor: str, limite: int | None = None, com_skills: bool = True) -> 
             metricas["formato_ok"] += 1
         else:
             escolhidas = skills_mod.selecionar(conjunto, pedido.horizonte_pregoes, [e.id for e in pedido.evidencias])
-            resposta = opinar(pedido, ollama, versao, sistema=skills_mod.montar_sistema(escolhidas) or None,
+            resposta = opinar(pedido, cadeia, versao, sistema=skills_mod.montar_sistema(escolhidas) or None,
                               schema=skills_mod.schema_da_resposta(cfg.dir_skills) if conjunto else None)
             metricas["formato_ok"] += 1
             if resposta.origem == "REGRA":
@@ -80,7 +82,7 @@ def rodar(provedor: str, limite: int | None = None, com_skills: bool = True) -> 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Avaliacao offline do servico de IA")
-    parser.add_argument("--provedor", choices=["regra", "ollama"], default="regra")
+    parser.add_argument("--provedor", choices=["regra", "gemini"], default="regra")
     parser.add_argument("--limite", type=int)
     parser.add_argument("--sem-skills", action="store_true", help="usa o prompt embutido (linha de base)")
     argumentos = parser.parse_args(argv)

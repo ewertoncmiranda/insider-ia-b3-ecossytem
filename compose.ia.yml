@@ -1,94 +1,68 @@
-# Servico de IA (opiniao por horizonte). Camada opcional sobre o compose local da infra:
+# Servico de IA (opiniao por horizonte, chat, card e resumo de manchetes). Camada opcional sobre o
+# compose local da infra:
 #
 #   docker compose -f ../infra-b3-ecossytem/docker-compose-local.yml -f compose.ia.yml --profile ia up -d
-#   # modelo (passo manual, uma vez; usa a rede `saida`, que tem internet):
-#   docker compose -f ../infra-b3-ecossytem/docker-compose-local.yml -f compose.ia.yml \
-#       --profile ia-pull run --rm ollama-pull   # MODELO_CHAT=<nome> para outro modelo
 #   # verificar (a rede `ia` nao publica porta no host):
-#   docker compose -f ../infra-b3-ecossytem/docker-compose-local.yml -f compose.ia.yml exec ia-opiniao \
-#       python -c "import urllib.request;print(urllib.request.urlopen('http://127.0.0.1:8000/saude').read().decode())"
+#   docker compose -f ../infra-b3-ecossytem/docker-compose-local.yml -f compose.ia.yml exec ia-opiniao #       python -c "import urllib.request;print(urllib.request.urlopen('http://127.0.0.1:8000/saude').read().decode())"
+#
+# Provedor: so Gemini (DEC-IA-11, 2026-10-08); a chave fica em .env.ia (DEC-IA-09). Sem Gemini, lote e
+# card respondem pela regra e o chat fica indisponivel. Nao ha mais Ollama nem modelo local.
 #
 # Caminhos relativos resolvem a partir da pasta do PRIMEIRO -f (a infra), por isso o contexto de
 # build usa IA_CONTEXT (padrao: ../insider-ia-b3-ecossytem).
 #
-# Redes (SPEC 4.3): `ia` e `internal: true` (sem internet) e liga ia-opiniao, ollama e quem os chama
-# (gerar-insights). O MySQL NAO entra nela: quem atende /opiniao nao acessa o banco (NFR-IA-06).
-# Roda na CPU por padrao; GPU: some compose.ia-gpu.yml (exige a GPU visivel ao Docker).
+# Redes (SPEC 4.3): `ia` e `internal: true` liga o ia-opiniao a quem o chama (gerar-insights, painel e
+# gestor). A rede `saida` da internet somente ao ia-opiniao, para a API do Gemini.
+# O MySQL NAO entra na rede `ia`: quem atende /opiniao nao acessa o banco (NFR-IA-06).
 services:
-  ollama:
-    image: ollama/ollama:0.40.0
-    container_name: ollama
-    profiles: ["ia"]
-    restart: unless-stopped
-    environment:
-      OLLAMA_KEEP_ALIVE: 10m
-      OLLAMA_MAX_LOADED_MODELS: 1
-      OLLAMA_NUM_PARALLEL: 1
-    volumes:
-      - ollama_models:/root/.ollama
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-    networks:
-      - ia
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # Baixa modelos: unico container com saida para a internet, so sob demanda (profile `ia-pull`).
-  ollama-pull:
-    image: ollama/ollama:0.40.0
-    profiles: ["ia-pull"]
-    restart: "no"
-    entrypoint: ["sh", "-c"]
-    # Sobe um servidor so para este container, espera ficar pronto e baixa o modelo no volume.
-    command:
-      - ollama serve >/dev/null 2>&1 & until ollama list >/dev/null 2>&1; do sleep 1; done; ollama pull $${MODELO_CHAT:-qwen2.5:0.5b-instruct}
-    volumes:
-      - ollama_models:/root/.ollama
-    networks:
-      - saida
-
   ia-opiniao:
     image: ewertonmiranda/insider-ia-b3-ecossytem:${B3_IMAGEM_TAG:-develop}
+    build:
+      context: ${IA_CONTEXT:-../insider-ia-b3-ecossytem}
     container_name: ia-opiniao
     profiles: ["ia"]
     restart: unless-stopped
+    env_file:
+      - path: ${IA_CONTEXT:-../insider-ia-b3-ecossytem}/.env.ia
+        required: false
     environment:
-      OLLAMA_URL: http://ollama:11434
-      MODELO_CHAT: ${MODELO_CHAT:-qwen2.5:0.5b-instruct}
-      MODELO_EMBED: ${MODELO_EMBED:-nomic-embed-text}
       RAG_INDICE: /app/var/rag.sqlite
+      GESTOR_URL: http://gestor-ativos-brutos:8091
       LOG_LEVEL: INFO
     volumes:
       - ia_indice:/app/var   # indice do RAG: derivado das fichas, refeito por POST /indexar
-    depends_on:
-      ollama:
-        condition: service_healthy
     networks:
       - ia
+      - saida
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
 
-  # O job `python -m app.opiniao.gerar` (gerar-insights) fala com o Ollama/ia-opiniao pela rede `ia`.
+  # O job `python -m app.opiniao.gerar` (gerar-insights) fala com o ia-opiniao pela rede `ia`.
   gerar-insights:
     environment:
-      OLLAMA_URL: http://ollama:11434
-      OLLAMA_MODELO: ${MODELO_CHAT:-qwen2.5:0.5b-instruct}
       IA_URL: http://ia-opiniao:8000
     networks:
       - observability
       - ia
 
+  # O painel chama /ia/* em si mesmo; o proxy interno remove /ia e encaminha para ia-opiniao.
+  painel-ativos-frontend:
+    environment:
+      IA_URL: http://ia-opiniao:8000
+    networks:
+      - observability
+      - ia
+
+  # O pacote do ativo e as ferramentas do chat leem apenas GETs do gestor.
+  gestor-ativos-brutos:
+    networks:
+      - observability
+      - ia
+
 volumes:
-  ollama_models:
   ia_indice:
 
 networks:

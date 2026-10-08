@@ -17,7 +17,7 @@ from app.modelos import (
     PedidoOpiniao,
 )
 from app.orquestrador import opinar
-from app.provedores.ollama import ErroDoProvedor
+from app.provedores.base import ErroDoProvedor
 from app.regras import resposta_de_regra
 from app.validador import validar
 
@@ -152,8 +152,8 @@ class TestOrquestrador:
 
 
 class TestEndpoint:
-    def test_post_opiniao_sem_ollama_devolve_200_pela_regra(self, monkeypatch):
-        monkeypatch.setenv("OLLAMA_URL", "http://127.0.0.1:1")
+    def test_post_opiniao_sem_gemini_devolve_200_pela_regra(self, monkeypatch):
+        monkeypatch.setenv("GEMINI_API_KEY", "")
         corpo = _pedido().model_dump()
         resposta = TestClient(api.app).post("/opiniao", json=corpo)
         assert resposta.status_code == 200
