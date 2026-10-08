@@ -15,7 +15,7 @@ from app.config import Settings
 from app.contexto import ContextoRag
 from app.modelos import PedidoOpiniao, PedidoOpiniaoAtivo, RespostaOpiniao, RespostaOpiniaoAtivo
 from app.orquestrador import opinar, opinar_ativo
-from app.provedores.ollama import OllamaProvedor
+from app.provedores.cadeia import montar_cadeia
 
 app = FastAPI(title="insider-ia-b3-ecossytem", version="0.1.0")
 
@@ -72,7 +72,7 @@ def opiniao(pedido: PedidoOpiniao) -> RespostaOpiniao:
     """CTR-IA-01: um horizonte por chamada. Nunca devolve 5xx por falha do modelo (cai na regra)."""
     settings = Settings.do_ambiente()
     conjunto = skills_mod.listar(settings.dir_skills)
-    provedor = OllamaProvedor(settings.ollama_url, settings.modelo_chat, timeout_s=settings.timeout_modelo_s)
+    provedor = montar_cadeia(settings, "lote")
     escolhidas = skills_mod.selecionar(conjunto, pedido.horizonte_pregoes, [e.id for e in pedido.evidencias])
     return opinar(pedido, provedor, skills_mod.versao_do_conjunto(conjunto),
                   sistema=skills_mod.montar_sistema(escolhidas) or None,
@@ -88,7 +88,7 @@ def opiniao_do_ativo(pedido: PedidoOpiniaoAtivo) -> RespostaOpiniaoAtivo:
     """
     settings = Settings.do_ambiente()
     conjunto = skills_mod.listar(settings.dir_skills)
-    provedor = OllamaProvedor(settings.ollama_url, settings.modelo_chat, timeout_s=settings.timeout_modelo_s)
+    provedor = montar_cadeia(settings, "lote")
     ids = [e.id for h in pedido.horizontes for e in h.evidencias]
     escolhidas: list = []
     for h in pedido.horizontes:
