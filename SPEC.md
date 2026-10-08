@@ -116,7 +116,7 @@ Vocabulário fechado: `opiniao ∈ {SINAL_POSITIVO, SINAL_NEGATIVO, SINAL_NEUTRO
 
 ### 5.4 Variáveis de ambiente
 
-`OLLAMA_URL`, `MODELO_CHAT` (padrão `qwen2.5:1.5b-instruct`, alvo `qwen2.5:7b-instruct`), `MODELO_EMBED` (`nomic-embed-text`), `VETORES_URL`, `DIR_SKILLS`, `DIR_CONHECIMENTO`, `DB_*` (só leitura, para o gerador de fichas), `LOG_LEVEL`.
+`OLLAMA_URL`, `MODELO_CHAT` (padrão `qwen2.5:0.5b-instruct` desde 2026-10-08; antes `qwen2.5:1.5b-instruct`), `MODELO_EMBED` (`nomic-embed-text`), `VETORES_URL`, `DIR_SKILLS`, `DIR_CONHECIMENTO`, `DB_*` (só leitura, para o gerador de fichas), `LOG_LEVEL`.
 
 ---
 
@@ -228,7 +228,7 @@ Tamanho-alvo: 2–4 KB por ficha de ativo; acervo total na casa de poucos MB, ve
 | DEC-IA-01 | Onde ficam as fichas | Git deste repo (recomendado: histórico e revisão) x volume Docker |
 | DEC-IA-02 | Motor de vetores | SQLite + `sqlite-vec` no início (zero serviço extra); Qdrant quando passar de ~50 mil trechos |
 | DEC-IA-03 | Gravar fontes usadas | **Decidido (2026-10-07): campo dentro de `justificativa_json`, sem V23.** Evita migration e disputa de número no hub; o painel já lê esse JSON |
-| DEC-IA-04 | Modelo alvo | **Decidido (2026-10-07): manter `qwen2.5:1.5b-instruct`** (único que cabe em 2 GB de GPU) com validador e reserva por regra compensando a fraqueza; o 7b só se houver GPU maior (TASK-IA-13) |
+| DEC-IA-04 | Modelo alvo | **Revisto (2026-10-08): `qwen2.5:0.5b-instruct`** — máquina sem GPU; em CPU o 1.5b gerava ~2,6 tokens/s e estourava o timeout em toda chamada (nenhuma resposta 200 em 72 h). Validador e reserva por regra compensam a fraqueza. Antes (2026-10-07): 1.5b. O 7b só com GPU (TASK-IA-13) |
 | DEC-IA-05 | Quem gera as fichas | **Decidido (2026-10-07): job deste repo lendo o MySQL**, executado pela Sessão 03 (TASK-IA-07/08), com rede e usuário só de leitura |
 
 ---
@@ -243,7 +243,7 @@ Tamanho-alvo: 2–4 KB por ficha de ativo; acervo total na casa de poucos MB, ve
 |---|---|---|---|---|
 | TASK-IA-01 | Esqueleto do repo: FastAPI, Dockerfile, `compose.ia.yml` (duas redes, 4.3), CI (lint + testes + build); remover `compose.ia*.yml` da infra | — | `GET /saude` responde no compose local | IMPLEMENTADO (2026-10-07): `/saude` e `/skills` no ar no compose local (container `healthy`, modelo baixado detectado), rede `ia` sem internet conferida, CI só com testes. Falta remover `compose.ia*.yml` da infra |
 | TASK-IA-02 | Portar `modelo_llm.py`, validador e reserva por regra de `gerar-insights/app/opiniao` (contrato com `permitidas` e `risco_calculado`, 5.1) | TASK-IA-01, TASK-IA-05 | Linhas `origem = REGRA` idênticas às do gerador atual nos 315 dossiês de 2026-10-06; linhas `MODELO` passam no mesmo validador | IMPLEMENTADO (2026-10-07, 8e16bf3): `POST /opiniao` com validador e reserva por regra; os 315 dossiês de 2026-10-06 reproduzem o esperado sem divergência (`tests/test_avaliacao.py`); linhas MODELO passam no mesmo validador. Sobrou, fora desta task: com o Ollama em CPU o limite de 180 s estoura e o serviço responde pela regra (ver IA-13/DEC-IA-04) |
-| TASK-IA-03 | `gerar-insights` passa a chamar `POST /opiniao` por HTTP, enviando evidências, `permitidas` e `risco_calculado` | TASK-IA-02 | Linhas `REGRA` de `opiniao_ia` idênticas antes/depois (as de modelo dependem de semente e versão: só precisam passar no validador); prompt removido do worker | EM ANDAMENTO (Sessão 01/feature-migrate no gerar-insights, 2026-10-08) |
+| TASK-IA-03 | `gerar-insights` passa a chamar `POST /opiniao` por HTTP, enviando evidências, `permitidas` e `risco_calculado` | TASK-IA-02 | Linhas `REGRA` de `opiniao_ia` idênticas antes/depois (as de modelo dependem de semente e versão: só precisam passar no validador); prompt removido do worker | VERIFICADO (Sessão 01, 2026-10-08): gerar-insights `c885678` chama `POST /opiniao` (identidade por `GET /saude`; `versao_prompt = skills@hash`; reserva local se o serviço cai); prompt/validador/Ollama removidos do worker. Aceite: 315/315 linhas REGRA de 2026-10-06 idênticas (regra local = banco = reserva do serviço); ponta a ponta com WEGE3 gravou 3 linhas pelo serviço |
 
 ### Fase 2 — Skills
 
@@ -269,7 +269,7 @@ Tamanho-alvo: 2–4 KB por ficha de ativo; acervo total na casa de poucos MB, ve
 | ID | Tarefa | Depende | Aceite | Status |
 |---|---|---|---|---|
 | TASK-IA-13 | Trocar para 7b com GPU e comparar no conjunto de avaliação | TASK-IA-05, DEC-IA-04 | Métrica igual ou melhor; latência dentro de NFR-IA-02 | PLANEJADO (Sessão 03, delegado em 2026-10-08) |
-| TASK-IA-14 | Gestor e painel: aceitar item de `justificativa_json` com `trecho_id` e mostrar fontes no cartão "Opinião por horizonte" — Sessão 01 | DEC-IA-03 (decidida), TASK-IA-11 | Cada justificativa com link para a ficha/trecho | EM ANDAMENTO (Sessão 02, delegado em 2026-10-08): serviço pronto — item que cita trecho leva `fonte` e `trecho` congelados na geração (sem link: a rede `ia` é interna e o gestor não a alcança); gestor/painel aceitam `trecho_id` (Sessão 01, parte 1); falta gravar o item inteiro (IA-03), expor `fonte`/`trecho` no GET e mostrar no cartão (combinado com a Sessão 01) |
+| TASK-IA-14 | Gestor e painel: aceitar item de `justificativa_json` com `trecho_id` e mostrar fontes no cartão "Opinião por horizonte" — Sessão 01 | DEC-IA-03 (decidida), TASK-IA-11 | Cada justificativa com link para a ficha/trecho | IMPLEMENTADO (Sessão 01 a pedido da Sessão 02, 2026-10-08): worker grava o item inteiro (`c885678`), gestor devolve `fonte`/`trecho` (`8a2cc22`), cartão mostra "fonte: <caminho>" e o trecho num expansível escapado (`7d8874d`) |
 
 ---
 
