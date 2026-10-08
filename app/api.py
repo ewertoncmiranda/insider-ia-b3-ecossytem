@@ -6,7 +6,7 @@ import json
 import urllib.error
 import urllib.request
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
 from app import skills as skills_mod
 from app.config import Settings
@@ -59,6 +59,21 @@ def opiniao(pedido: PedidoOpiniao) -> RespostaOpiniao:
                   sistema=skills_mod.montar_sistema(escolhidas) or None,
                   schema=skills_mod.schema_da_resposta(settings.dir_skills),
                   contexto=ContextoRag(settings.rag_indice) if settings.rag_indice.is_file() else None)
+
+
+@app.post("/indexar")
+def indexar_conhecimento() -> dict:
+    """REQ-IA-06: (re)indexa as fichas alteradas (por hash do trecho). Sem Ollama, so indice textual."""
+    settings = Settings.do_ambiente()
+    try:
+        from app.rag import embeddings  # noqa: PLC0415 - modulo da TASK-IA-10
+        from app.rag.indexador import indexar  # noqa: PLC0415
+    except ImportError as erro:
+        raise HTTPException(status_code=501, detail=f"indexador indisponivel: {erro}") from erro
+    embedder = embeddings.criar(settings.ollama_url, settings.modelo_embed)
+    resumo = indexar(settings.dir_conhecimento, settings.rag_indice, embedder)
+    return {"indice": str(settings.rag_indice.name), **{k: getattr(resumo, k) for k in
+            ("novos", "removidos", "inalterados", "com_vetor", "total") if hasattr(resumo, k)}}
 
 
 @app.get("/skills")
