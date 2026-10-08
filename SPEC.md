@@ -235,7 +235,7 @@ Tamanho-alvo: 2–4 KB por ficha de ativo; acervo total na casa de poucos MB, ve
 
 ## 9. Plano de execução (tarefas)
 
-**Responsáveis (decidido em 2026-10-07):** Sessão 02 — TASK-IA-01, 02, 03, 05, 06 (e 04); Sessão 03 — TASK-IA-07, 08, 12 (dados e fichas); Sessão 01 — TASK-IA-14 (gestor e painel). RAG (TASK-IA-10/11) fica **adiado** até as fichas provarem valor: a leitura direta por metadado (6.5) cobre o essencial.
+**Responsáveis (redistribuído pelo usuário em 2026-10-08; substitui a divisão de 2026-10-07):** Sessão 01 — TASK-IA-03; Sessão 02 — TASK-IA-04, 11 e 14 (e fechar o status de 02/05, que entregou em `8e16bf3`); Sessão 03 — TASK-IA-06, 09, 10, 12, 13 e o que faltar de 02/05. Ordem: IA-10 (Sessão 03) desbloqueia IA-11 (Sessão 02), que desbloqueia IA-14; IA-03 (Sessão 01) depende de IA-02. RAG (TASK-IA-10/11) deixa de estar adiado.
 
 ### Fase 1 — Extrair o serviço (sem mudar resultado)
 
@@ -243,15 +243,15 @@ Tamanho-alvo: 2–4 KB por ficha de ativo; acervo total na casa de poucos MB, ve
 |---|---|---|---|---|
 | TASK-IA-01 | Esqueleto do repo: FastAPI, Dockerfile, `compose.ia.yml` (duas redes, 4.3), CI (lint + testes + build); remover `compose.ia*.yml` da infra | — | `GET /saude` responde no compose local | IMPLEMENTADO (2026-10-07): `/saude` e `/skills` no ar no compose local (container `healthy`, modelo baixado detectado), rede `ia` sem internet conferida, CI só com testes. Falta remover `compose.ia*.yml` da infra |
 | TASK-IA-02 | Portar `modelo_llm.py`, validador e reserva por regra de `gerar-insights/app/opiniao` (contrato com `permitidas` e `risco_calculado`, 5.1) | TASK-IA-01, TASK-IA-05 | Linhas `origem = REGRA` idênticas às do gerador atual nos 315 dossiês de 2026-10-06; linhas `MODELO` passam no mesmo validador | PLANEJADO |
-| TASK-IA-03 | `gerar-insights` passa a chamar `POST /opiniao` por HTTP, enviando evidências, `permitidas` e `risco_calculado` | TASK-IA-02 | Linhas `REGRA` de `opiniao_ia` idênticas antes/depois (as de modelo dependem de semente e versão: só precisam passar no validador); prompt removido do worker | PLANEJADO |
+| TASK-IA-03 | `gerar-insights` passa a chamar `POST /opiniao` por HTTP, enviando evidências, `permitidas` e `risco_calculado` | TASK-IA-02 | Linhas `REGRA` de `opiniao_ia` idênticas antes/depois (as de modelo dependem de semente e versão: só precisam passar no validador); prompt removido do worker | PLANEJADO (Sessão 01, delegado em 2026-10-08) |
 
 ### Fase 2 — Skills
 
 | ID | Tarefa | Depende | Aceite | Status |
 |---|---|---|---|---|
-| TASK-IA-04 | Converter o prompt atual em skills (seção 6.2) | TASK-IA-02 | Conjunto de avaliação não piora | PLANEJADO |
+| TASK-IA-04 | Converter o prompt atual em skills (seção 6.2) | TASK-IA-02 | Conjunto de avaliação não piora | PLANEJADO (Sessão 02, delegado em 2026-10-08) |
 | TASK-IA-05 | Conjunto de avaliação (`avaliacao/dossies`, `esperado`) e métrica no CI. Os dossiês saem de `opiniao_ia` (pregão 2026-10-06, `evidencias_json`, risco e permitidas recalculadas pelas regras) | TASK-IA-01 | CI falha em regressão | EM ANDAMENTO (Sessão 02/feature-esqueleto, 2026-10-07) |
-| TASK-IA-06 | Corrigir falhas observadas: contradição sinal x evidência, ids de fator em "o que invalida", excesso de justificativas. **Já resolvidas no gerador atual** (prompt 1.2, 2026-10-07: justificativa só com o que sustenta a opinião, máx. 5, e `o_que_invalida` calculado das evidências contrárias); falta portar e cobrir com casos | TASK-IA-02 | Casos de PETR4/2026-10-06 passam no validador | PLANEJADO |
+| TASK-IA-06 | Corrigir falhas observadas: contradição sinal x evidência, ids de fator em "o que invalida", excesso de justificativas. **Já resolvidas no gerador atual** (prompt 1.2, 2026-10-07: justificativa só com o que sustenta a opinião, máx. 5, e `o_que_invalida` calculado das evidências contrárias); falta portar e cobrir com casos | TASK-IA-02 | Casos de PETR4/2026-10-06 passam no validador | PLANEJADO (Sessão 03, delegado em 2026-10-08) |
 
 ### Fase 3 — Fichas e RAG
 
@@ -259,17 +259,17 @@ Tamanho-alvo: 2–4 KB por ficha de ativo; acervo total na casa de poucos MB, ve
 |---|---|---|---|---|
 | TASK-IA-07 | Gerador das fichas de **evidência** e **setor** (maior valor, poucas consultas) — Sessão 03 | DEC-IA-05 (decidida) | Fichas geradas, hash estável em reexecução | IMPLEMENTADO (Sessão 03, 2026-10-07): `app/fichas/evidencia.py` e `setores.py`; 18 fichas de evidência (16 fatores, momentum 20p semanal, placar das regras) e 39 de setor; reexecução sem mudança de dado regrava 0 (hash estável); tests/fichas |
 | TASK-IA-08 | Gerador das fichas de **ativos** e **mercado/regimes** — Sessão 03. Critério do universo: papéis com fator `LIQUIDEZ_63D` e fundamentos; o banco tem 2.116 códigos no COTAHIST e 221 CNPJs com DFP anual, então "~300" é o teto, não a meta | TASK-IA-07 | ≤ 4 KB por ficha, seção Limitações presente (inclui "eventos corporativos inferidos: 89 registros") | IMPLEMENTADO (Sessão 03, 2026-10-07): `app/fichas/ativos.py` e `mercado.py`; 243 fichas de ativo (LIQUIDEZ_63D + DFP anual; maior 3,7 KB), 17 anos de mercado + `regimes.md`; Limitações com os 89 eventos; ano corrente fora; `disponivel_ate` = maior entrega usada |
-| TASK-IA-09 | Fundamentos a partir do glossário/fórmulas do painel e PDFs de estudo | — | Trechos com fonte e seção | PLANEJADO |
-| TASK-IA-10 | Indexador incremental + busca com filtro de ponto no tempo | DEC-IA-02, TASK-IA-07 | Teste: trecho com disponibilidade futura nunca retorna | PLANEJADO (adiado até as fichas provarem valor) |
-| TASK-IA-11 | Orquestrador monta contexto (6.5) e cita `trecho_id` | TASK-IA-10 | Respostas citam fontes; validador confere | PLANEJADO |
+| TASK-IA-09 | Fundamentos a partir do glossário/fórmulas do painel e PDFs de estudo | — | Trechos com fonte e seção | PLANEJADO (Sessão 03, delegado em 2026-10-08) |
+| TASK-IA-10 | Indexador incremental + busca com filtro de ponto no tempo | DEC-IA-02, TASK-IA-07 | Teste: trecho com disponibilidade futura nunca retorna | PLANEJADO (Sessão 03, delegado em 2026-10-08) |
+| TASK-IA-11 | Orquestrador monta contexto (6.5) e cita `trecho_id` | TASK-IA-10 | Respostas citam fontes; validador confere | PLANEJADO (Sessão 02, delegado em 2026-10-08) |
 | TASK-IA-12 | Agendamento: anual (DFP), trimestral (ITR), semanal (evidência) na rotina da manhã | TASK-IA-08 | Registro em `etl_execucao` | EM ANDAMENTO (Sessão 03/feature-esqueleto, 2026-10-07) |
 
 ### Fase 4 — Modelo e painel
 
 | ID | Tarefa | Depende | Aceite | Status |
 |---|---|---|---|---|
-| TASK-IA-13 | Trocar para 7b com GPU e comparar no conjunto de avaliação | TASK-IA-05, DEC-IA-04 | Métrica igual ou melhor; latência dentro de NFR-IA-02 | PLANEJADO |
-| TASK-IA-14 | Gestor e painel: aceitar item de `justificativa_json` com `trecho_id` e mostrar fontes no cartão "Opinião por horizonte" — Sessão 01 | DEC-IA-03 (decidida), TASK-IA-11 | Cada justificativa com link para a ficha/trecho | PLANEJADO |
+| TASK-IA-13 | Trocar para 7b com GPU e comparar no conjunto de avaliação | TASK-IA-05, DEC-IA-04 | Métrica igual ou melhor; latência dentro de NFR-IA-02 | PLANEJADO (Sessão 03, delegado em 2026-10-08) |
+| TASK-IA-14 | Gestor e painel: aceitar item de `justificativa_json` com `trecho_id` e mostrar fontes no cartão "Opinião por horizonte" — Sessão 01 | DEC-IA-03 (decidida), TASK-IA-11 | Cada justificativa com link para a ficha/trecho | PLANEJADO (Sessão 02, delegado em 2026-10-08) |
 
 ---
 
