@@ -55,8 +55,6 @@ services:
 
   ia-opiniao:
     image: ewertonmiranda/insider-ia-b3-ecossytem:${B3_IMAGEM_TAG:-develop}
-    build:
-      context: ${IA_CONTEXT:-../insider-ia-b3-ecossytem}
     container_name: ia-opiniao
     profiles: ["ia"]
     restart: unless-stopped
