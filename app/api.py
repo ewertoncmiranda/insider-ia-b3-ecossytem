@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import sqlite3
+from datetime import datetime, timezone
 import urllib.error
 import urllib.request
 
@@ -18,6 +20,23 @@ from app.provedores.ollama import OllamaProvedor
 app = FastAPI(title="insider-ia-b3-ecossytem", version="0.1.0")
 
 AVISO = "Leitura automática dos números, regra experimental. Não é recomendação de investimento."
+
+
+def _estado_do_indice(settings: Settings) -> dict:
+    """Trechos no indice do RAG e a data do arquivo (ultima indexacao). Nunca levanta."""
+    caminho = settings.rag_indice
+    if not caminho.is_file():
+        return {"trechos": 0, "ultima_indexacao": None}
+    try:
+        conexao = sqlite3.connect(f"file:{caminho.as_posix()}?mode=ro", uri=True, timeout=2)
+        try:
+            total = conexao.execute("SELECT COUNT(*) FROM trecho").fetchone()[0]
+        finally:
+            conexao.close()
+    except sqlite3.Error:
+        return {"trechos": 0, "ultima_indexacao": None}
+    quando = datetime.fromtimestamp(caminho.stat().st_mtime, tz=timezone.utc).isoformat(timespec="seconds")
+    return {"trechos": int(total), "ultima_indexacao": quando}
 
 
 def _estado_do_ollama(settings: Settings) -> dict:
@@ -43,7 +62,7 @@ def saude() -> dict:
         "ollama": ollama,
         "skills_versao": skills_mod.versao_do_conjunto(conjunto),
         "skills": len(conjunto),
-        "indice": {"trechos": 0, "ultima_indexacao": None},
+        "indice": _estado_do_indice(settings),
         "aviso": AVISO,
     }
 

@@ -10,7 +10,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-RUN useradd --create-home --uid 10001 app
+RUN useradd --create-home --uid 10001 app && mkdir -p /app/var && chown app:app /app/var
 COPY --chown=app:app app ./app
 COPY --chown=app:app skills ./skills
 COPY --chown=app:app conhecimento ./conhecimento

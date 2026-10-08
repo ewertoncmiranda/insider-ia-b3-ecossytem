@@ -64,7 +64,10 @@ services:
       OLLAMA_URL: http://ollama:11434
       MODELO_CHAT: ${MODELO_CHAT:-qwen2.5:1.5b-instruct}
       MODELO_EMBED: ${MODELO_EMBED:-nomic-embed-text}
+      RAG_INDICE: /app/var/rag.sqlite
       LOG_LEVEL: INFO
+    volumes:
+      - ia_indice:/app/var   # indice do RAG: derivado das fichas, refeito por POST /indexar
     depends_on:
       ollama:
         condition: service_healthy
@@ -88,6 +91,7 @@ services:
 
 volumes:
   ollama_models:
+  ia_indice:
 
 networks:
   ia:
