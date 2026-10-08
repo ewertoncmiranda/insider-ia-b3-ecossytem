@@ -63,6 +63,10 @@ class ItemDeJustificativa(BaseModel):
     evidencia_id: str | None = None
     trecho_id: str | None = None
     leitura: str
+    # So em item com trecho_id: caminho da ficha (`conhecimento/...md#secao`) e o texto citado, copiados
+    # na hora da geracao. O painel mostra a fonte sem precisar alcançar este servico (rede `ia` interna).
+    fonte: str | None = None
+    trecho: str | None = None
 
 
 class RespostaOpiniao(BaseModel):

@@ -34,6 +34,16 @@ def _fontes(justificativa: list[dict], trechos: list[TrechoDeContexto]) -> list[
     return vistas
 
 
+def _com_fontes(justificativa: list[dict], trechos: list[TrechoDeContexto]) -> list[dict]:
+    """Item com trecho_id ganha `fonte` e `trecho` (texto citado), congelados junto da opiniao."""
+    por_id = {t.trecho_id: t for t in trechos}
+    saida = []
+    for item in justificativa:
+        t = por_id.get(str(item.get("trecho_id") or ""))
+        saida.append({**item, "fonte": t.fonte, "trecho": t.texto} if t else item)
+    return saida
+
+
 def _consultar(provedor: ProvedorLLM, pedido: PedidoOpiniao, sistema: str, schema: dict,
                trechos: list[TrechoDeContexto]) -> tuple[dict | None, int, str]:
     """(resposta valida | None, tentativas feitas, motivo da reserva quando None)."""
@@ -83,7 +93,7 @@ def opinar(pedido: PedidoOpiniao, provedor: ProvedorLLM | None, skills_versao: s
              motivo or "-")
     ausentes = list(pedido.dados_ausentes) + ([pedido.motivo_sem_base] if pedido.motivo_sem_base else [])
     return RespostaOpiniao(
-        opiniao=corpo["opiniao"], risco=corpo["risco"], justificativa=corpo["justificativa"],
+        opiniao=corpo["opiniao"], risco=corpo["risco"], justificativa=_com_fontes(corpo["justificativa"], trechos),
         o_que_invalida=corpo["o_que_invalida"], dados_ausentes=ausentes, fontes=_fontes(corpo["justificativa"], trechos),
         modelo=nome_modelo, skills_versao=skills_versao, origem=origem, tentativas=tentativas,
     )
