@@ -6,8 +6,8 @@ grupo_setor: UTILIDADES
 cobertura: 2022-2025
 disponivel_ate: 2026-03-03
 fonte: [cotacao_b3_diaria, indicador_fundamentalista, provento_contabil, evento_corporativo, fator_valor]
-gerado_em: 2026-10-07
-hash: d1fab58d4f48bef0f992034789647065ffeb50a120e0e2142f88b9a7f86e8dc3
+gerado_em: 2026-10-08
+hash: 486f4b869d41e5690f3da0528f88772c3bb409b95ce4b18ea1d1158409618a08
 ---
 
 ## Resumo
@@ -19,12 +19,12 @@ Medianas no período: P/L 21,0 (anos com lucro, n=2), ROE 1,3% (n=5).
 
 ## Por ano
 
-| Ano | Retorno | vs merc. | Vol. | Queda máx. | P/L fim | ROE % | Margem % | DY | Ret. ano seg. |
-|---|---|---|---|---|---|---|---|---|---|
-| 2022 | -10,2% | +8,2% | 31% | -23% | 5,5 | 17,5 | 48,6 | 4,3% | -9,6% |
-| 2023 | -9,6% | -30,9% | 22% | -17% | neg. | -2,6 | -5,1 | 0,0% | -34,1% |
-| 2024 | -34,1% | -5,2% | 19% | -36% | 36,5 | 1,9 | 3,4 | 0,7% | +35,3% |
-| 2025 | +35,3% | +13,1% | 32% | -16% | neg. | -5,3 | -4,2 | 0,9% | — |
+| Ano | Disp. | Retorno | vs merc. | Vol. | Queda máx. | P/L fim | ROE % | Margem % | DY | Ret. ano seg. |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2022 | 16/02/23 | -10,2% | +8,2% | 31% | -23% | 5,5 | 17,5 | 48,6 | 4,3% | -9,6% |
+| 2023 | 09/02/24 | -9,6% | -30,9% | 22% | -17% | neg. | -2,6 | -5,1 | 0,0% | -34,1% |
+| 2024 | 24/02/25 | -34,1% | -5,2% | 19% | -36% | 36,5 | 1,9 | 3,4 | 0,7% | +35,3% |
+| 2025 | 03/03/26 | +35,3% | +13,1% | 32% | -16% | neg. | -5,3 | -4,2 | 0,9% | — |
 
 ## Eventos
 

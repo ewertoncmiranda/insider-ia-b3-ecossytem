@@ -6,8 +6,8 @@ grupo_setor: AGRO_ALIMENTOS
 cobertura: 2025-2025
 disponivel_ate: 2026-03-18
 fonte: [cotacao_b3_diaria, indicador_fundamentalista, provento_contabil, evento_corporativo, fator_valor]
-gerado_em: 2026-10-07
-hash: 538a4725b0b09e799f0c5878012daa96328601ff268f472c613c9e7481621d13
+gerado_em: 2026-10-08
+hash: a635d31ff95cea5dcd8dfdabd0c7a6181b4dc86b0bc800e52f725601eeb094c6
 ---
 
 ## Resumo
@@ -19,9 +19,9 @@ Medianas no período: P/L 78,6 (anos com lucro, n=1), ROE -1,1% (n=16).
 
 ## Por ano
 
-| Ano | Retorno | vs merc. | Vol. | Queda máx. | P/L fim | ROE % | Margem % | DY | Ret. ano seg. |
-|---|---|---|---|---|---|---|---|---|---|
-| 2025 | +1,4% | -20,8% | 63% | -28% | 78,6 | 3,2 | 0,5 | 4,2% | — |
+| Ano | Disp. | Retorno | vs merc. | Vol. | Queda máx. | P/L fim | ROE % | Margem % | DY | Ret. ano seg. |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2025 | 18/03/26 | +1,4% | -20,8% | 63% | -28% | 78,6 | 3,2 | 0,5 | 4,2% | — |
 
 ## Eventos
 

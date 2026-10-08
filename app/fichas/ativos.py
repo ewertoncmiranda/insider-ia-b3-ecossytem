@@ -49,8 +49,12 @@ def montar(ctx: Contexto, simbolo: str) -> Ficha | None:
         if ano in proventos and fim and fim[1] > 0:
             dy = proventos[ano][0] / fim[1]
         seguinte = precos.composto(por_ano[ano + 1]) if ano + 1 in por_ano and ano + 1 <= base.ate.year else None
+        # Quando a linha inteira ficou publica (ponto no tempo, SPEC 6.4): fim do
+        # ano, entrega da DFP e dos proventos do ano. O RAG filtra por esta data.
+        disponivel = max([date(ano, 12, 31)] + [d for d in (
+            b.data_entrega if b else None, proventos.get(ano, (None, None))[1]) if d])
         linhas.append([
-            str(ano), pct(retorno), pct(None if retorno is None or merc is None else retorno - merc),
+            str(ano), f"{disponivel:%d/%m/%y}", pct(retorno), pct(None if retorno is None or merc is None else retorno - merc),
             pct_sem_sinal(precos.volatilidade(por_ano[ano]), 0), pct(precos.drawdown_maximo(por_ano[ano]), 0),
             "neg." if pl is not None and pl < 0 else num(pl), num(b.roe if b else None),
             num(b.margem if b else None), pct_sem_sinal(dy), pct(seguinte),
@@ -60,7 +64,7 @@ def montar(ctx: Contexto, simbolo: str) -> Ficha | None:
     merc_periodo = precos.composto([ctx.mercado[d] for d in sorted(ctx.mercado) if d >= min(retornos)])
     beta, n_beta = precos.beta(retornos, ctx.mercado)
     queda = precos.pior_queda(retornos)
-    pls = [float(l[5].replace(",", ".")) for l in linhas if l[5] not in ("—", "neg.")]
+    pls = [float(l[6].replace(",", ".")) for l in linhas if l[6] not in ("—", "neg.")]
     roes = [b.roe for b in balancos.values() if b.roe is not None]
 
     resumo = [
@@ -107,7 +111,7 @@ def montar(ctx: Contexto, simbolo: str) -> Ficha | None:
     }
     secoes = [
         ("Resumo", "\n".join(resumo)),
-        ("Por ano", tabela(["Ano", "Retorno", "vs merc.", "Vol.", "Queda máx.", "P/L fim", "ROE %",
+        ("Por ano", tabela(["Ano", "Disp.", "Retorno", "vs merc.", "Vol.", "Queda máx.", "P/L fim", "ROE %",
                             "Margem %", "DY", "Ret. ano seg."], linhas)),
         ("Eventos", texto_eventos),
         ("Padrões observados", "\n".join(f"- {p}" for p in padroes) or "- Sem amostra suficiente."),

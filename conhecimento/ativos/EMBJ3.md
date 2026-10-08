@@ -6,8 +6,8 @@ grupo_setor: INDUSTRIA_DIVERSOS
 cobertura: 2025-2025
 disponivel_ate: 2026-03-06
 fonte: [cotacao_b3_diaria, indicador_fundamentalista, provento_contabil, evento_corporativo, fator_valor]
-gerado_em: 2026-10-07
-hash: 61bb63de319bb17608a6a2a5a1d73517240acaea6d82e362c5141c11847cb55a
+gerado_em: 2026-10-08
+hash: 946a1efc78094dfec18ddf8b434224ece998db15fada41c90090b7779f627baf
 ---
 
 ## Resumo
@@ -19,9 +19,9 @@ Medianas no período: P/L 32,8 (anos com lucro, n=1), ROE 5,2% (n=16).
 
 ## Por ano
 
-| Ano | Retorno | vs merc. | Vol. | Queda máx. | P/L fim | ROE % | Margem % | DY | Ret. ano seg. |
-|---|---|---|---|---|---|---|---|---|---|
-| 2025 | +1,5% | -20,7% | 29% | -6% | 32,8 | 10,3 | 4,8 | 0,7% | — |
+| Ano | Disp. | Retorno | vs merc. | Vol. | Queda máx. | P/L fim | ROE % | Margem % | DY | Ret. ano seg. |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2025 | 06/03/26 | +1,5% | -20,7% | 29% | -6% | 32,8 | 10,3 | 4,8 | 0,7% | — |
 
 ## Eventos
 

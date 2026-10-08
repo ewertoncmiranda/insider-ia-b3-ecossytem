@@ -50,12 +50,14 @@ def montar(ctx: Contexto, setor: str, membros: list[str]) -> Ficha | None:
     entregas: list[date] = []
     for ano in anos:
         pls, roes, margens, alav, rets = [], [], [], [], []
+        disponivel = date(ano, 12, 31)
         for s in membros:
             b = next((x for x in base.balancos.get(s, []) if x.ano == ano), None)
             fim = precos.fechamento_ate(base.precos.get(s, []), date(ano, 12, 31))
             if b:
                 if b.data_entrega:
                     entregas.append(b.data_entrega)
+                    disponivel = max(disponivel, b.data_entrega)
                 if b.lpa and b.lpa > 0 and fim and fim[0].year == ano:
                     pls.append(fim[1] / b.lpa)
                 if b.roe is not None:
@@ -71,7 +73,7 @@ def montar(ctx: Contexto, setor: str, membros: list[str]) -> Ficha | None:
         merc = ctx.mercado_por_ano.get(ano)
         if ret_setor is not None and merc is not None:
             excessos[ano] = ret_setor - merc
-        linhas.append([str(ano), str(len(rets)), _faixa(pls), _faixa(roes), _faixa(margens), _faixa(alav),
+        linhas.append([str(ano), f"{disponivel:%d/%m/%y}", str(len(rets)), _faixa(pls), _faixa(roes), _faixa(margens), _faixa(alav),
                        pct(ret_setor), pct(excessos.get(ano))])
 
     grupo = base.grupo_setor.get(setor, "")
@@ -82,7 +84,7 @@ def montar(ctx: Contexto, setor: str, membros: list[str]) -> Ficha | None:
         vale = min(excessos, key=excessos.get)
         resumo.append(f"Melhor ano contra o mercado: {pico} ({pct(excessos[pico])}); pior: {vale} "
                       f"({pct(excessos[vale])}). Média igual-peso dos papéis com o ano inteiro.")
-    n_max = max(int(l[1]) for l in linhas)
+    n_max = max(int(l[2]) for l in linhas)
     if n_max < 3:
         resumo.append("Poucos papéis: faixas são indicativas, não típicas.")
 
@@ -91,9 +93,9 @@ def montar(ctx: Contexto, setor: str, membros: list[str]) -> Ficha | None:
                  "disponivel_ate": max(entregas + [base.ate]) if entregas else base.ate, "fonte": FONTES}
     secoes = [
         ("Resumo", "\n".join(resumo)),
-        ("Por ano", "Mediana (p25–p75) entre os papéis do setor. P/L só com lucro; alavancagem = dívida "
+        ("Por ano", "Disp. = quando a linha ficou pública (entrega da última DFP do ano). Mediana (p25–p75) entre os papéis do setor. P/L só com lucro; alavancagem = dívida "
                     "líquida / EBIT (EBIT positivo).\n\n" + tabela(
-                        ["Ano", "Papéis", "P/L fim", "ROE %", "Margem %", "Dív.líq./EBIT", "Retorno", "vs merc."],
+                        ["Ano", "Disp.", "Papéis", "P/L fim", "ROE %", "Margem %", "Dív.líq./EBIT", "Retorno", "vs merc."],
                         linhas)),
         ("Limitações", "\n".join([
             "- Setor do FCA atual da empresa (sem histórico de reclassificação).",

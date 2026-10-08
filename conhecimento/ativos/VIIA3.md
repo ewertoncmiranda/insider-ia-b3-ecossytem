@@ -6,8 +6,8 @@ grupo_setor: CONSUMO_SERVICOS
 cobertura: 2021-2023
 disponivel_ate: 2026-03-12
 fonte: [cotacao_b3_diaria, indicador_fundamentalista, provento_contabil, evento_corporativo, fator_valor]
-gerado_em: 2026-10-07
-hash: 14d83c466b4d5904936e52f4cc7f4f3ffe3f89200a6fc8c5f3410db7420ab970
+gerado_em: 2026-10-08
+hash: 5169068d632b1b85a11b7102b5b72c32946f33ad7cab0c2c81e8bcb8117f385d
 ---
 
 ## Resumo
@@ -19,11 +19,11 @@ Medianas no período: P/L — (anos com lucro, n=0), ROE -2,9% (n=16).
 
 ## Por ano
 
-| Ano | Retorno | vs merc. | Vol. | Queda máx. | P/L fim | ROE % | Margem % | DY | Ret. ano seg. |
-|---|---|---|---|---|---|---|---|---|---|
-| 2021 | -50,5% | -36,1% | 70% | -60% | neg. | -5,3 | -1,0 | 0,0% | -54,3% |
-| 2022 | -54,3% | -35,9% | 73% | -65% | neg. | -6,5 | -1,1 | 0,0% | -68,7% |
-| 2023 | -68,7% | -90,0% | 67% | -73% | neg. | -76,0 | -9,1 | 0,0% | — |
+| Ano | Disp. | Retorno | vs merc. | Vol. | Queda máx. | P/L fim | ROE % | Margem % | DY | Ret. ano seg. |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2021 | 09/03/22 | -50,5% | -36,1% | 70% | -60% | neg. | -5,3 | -1,0 | 0,0% | -54,3% |
+| 2022 | 09/03/23 | -54,3% | -35,9% | 73% | -65% | neg. | -6,5 | -1,1 | 0,0% | -68,7% |
+| 2023 | 25/03/24 | -68,7% | -90,0% | 67% | -73% | neg. | -76,0 | -9,1 | 0,0% | — |
 
 ## Eventos
 

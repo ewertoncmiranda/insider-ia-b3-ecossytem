@@ -6,8 +6,8 @@ grupo_setor: UTILIDADES
 cobertura: 2025-2025
 disponivel_ate: 2026-02-26
 fonte: [cotacao_b3_diaria, indicador_fundamentalista, provento_contabil, evento_corporativo, fator_valor]
-gerado_em: 2026-10-07
-hash: 602c1f020dd642b872b8f7589bfb7c2700d52fb17c19d5e5d56545e79c19c49c
+gerado_em: 2026-10-08
+hash: 1d1c527b8fcf0ddde5378c0a533bf454fb698c1ee171a0301ecd59fe09fd32f9
 ---
 
 ## Resumo
@@ -19,9 +19,9 @@ Medianas no período: P/L 21,9 (anos com lucro, n=1), ROE 7,6% (n=10).
 
 ## Por ano
 
-| Ano | Retorno | vs merc. | Vol. | Queda máx. | P/L fim | ROE % | Margem % | DY | Ret. ano seg. |
-|---|---|---|---|---|---|---|---|---|---|
-| 2025 | -14,9% | -37,2% | 69% | -27% | 21,9 | 5,5 | 15,9 | 4,3% | — |
+| Ano | Disp. | Retorno | vs merc. | Vol. | Queda máx. | P/L fim | ROE % | Margem % | DY | Ret. ano seg. |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2025 | 26/02/26 | -14,9% | -37,2% | 69% | -27% | 21,9 | 5,5 | 15,9 | 4,3% | — |
 
 ## Eventos
 

@@ -6,8 +6,8 @@ grupo_setor:
 cobertura: 2021-2022
 disponivel_ate: 2022-03-11
 fonte: [cotacao_b3_diaria, indicador_fundamentalista, provento_contabil, evento_corporativo, fator_valor]
-gerado_em: 2026-10-07
-hash: 6e975af8b473634efeb17df4a3a1031d6da17d6e15f451998250a9b4149591be
+gerado_em: 2026-10-08
+hash: c1c8097908f4f7ca0eb6710cdc269792a7bf7ce16691c66ec5d7db8ed85084c8
 ---
 
 ## Resumo
@@ -19,10 +19,10 @@ Medianas no período: P/L — (anos com lucro, n=0), ROE 27,1% (n=2).
 
 ## Por ano
 
-| Ano | Retorno | vs merc. | Vol. | Queda máx. | P/L fim | ROE % | Margem % | DY | Ret. ano seg. |
-|---|---|---|---|---|---|---|---|---|---|
-| 2021 | -32,2% | -17,7% | 52% | -45% | — | — | — | 0,0% | +2,7% |
-| 2022 | +2,7% | +21,1% | 30% | -5% | — | — | — | — | — |
+| Ano | Disp. | Retorno | vs merc. | Vol. | Queda máx. | P/L fim | ROE % | Margem % | DY | Ret. ano seg. |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2021 | 31/12/21 | -32,2% | -17,7% | 52% | -45% | — | — | — | 0,0% | +2,7% |
+| 2022 | 31/12/22 | +2,7% | +21,1% | 30% | -5% | — | — | — | — | — |
 
 ## Eventos
 

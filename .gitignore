@@ -11,3 +11,6 @@ venv/
 
 # IDE (configuracao local, nao vai para o repositorio)
 .idea/
+
+# Indice do RAG (derivado das fichas; reconstruivel com python -m app.rag.indexador)
+var/
