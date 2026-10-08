@@ -177,7 +177,7 @@ def opinar_ativo(pedido: PedidoOpiniaoAtivo, provedor: ProvedorLLM | Cadeia | No
         cota=CotaDaResposta(
             balde=pedido.uso,
             restante_hoje=cadeia.governador.restante(pedido.uso) if gemini else None,
-            gemini_disponivel=any(cadeia.governador.disponivel(e.nome, pedido.uso) for e in gemini)))
+            gemini_disponivel=bool(gemini) and cadeia.governador.gemini_disponivel(pedido.uso)))
 
 
 def opinar(pedido: PedidoOpiniao, provedor: ProvedorLLM | Cadeia | None, skills_versao: str,
