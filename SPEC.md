@@ -234,6 +234,7 @@ Tamanho-alvo: 2–4 KB por ficha de ativo; acervo total na casa de poucos MB, ve
 | DEC-IA-07 | Como o painel chega ao serviço | **Decidido (2026-10-08): proxy `/ia/*` no `server.js` do painel → `ia-opiniao:8000`**, sem passar pelo gestor (streaming simples, Java intocado). O painel entra na rede `ia` pelo override em `compose.ia.yml` |
 | DEC-IA-08 | Chat sem Gemini | **Decidido (2026-10-08): chat fica indisponível** quando nenhum modelo Gemini responde (cota, pausa ou erro). O modelo local 0.5b **não** atende chat; continua só como reserva do lote/card |
 | DEC-IA-09 | Chave da API | **Decidido (2026-10-08): `GEMINI_API_KEY` só em `.env.ia` na raiz deste repo (ignorado pelo `.gitignore`, padrão `.env.*`)**, lido pelo `compose.ia.yml`. Nunca em código, log, resposta, `/saude`, teste ou SPEC. Sem chave, o serviço sobe e trata o Gemini como indisponível |
+| DEC-IA-10 | Modelos e cota do nível gratuito | **Decidido (2026-10-08), a partir da tela de limites da chave do usuário:** o nível gratuito dá 15 RPM / 500 RPD aos modelos Flash Lite (3.5 e 3.1) e só **5 RPM / 20 RPD** aos Flash (3.8, 3.7, 3.6, 3.5), por isso o padrão deixa de ser o `gemini-3.8-flash` sozinho. Ordem de tentativa: `3.5 Flash Lite → 3.1 Flash Lite → 3.8 Flash` (o Flash, mais forte, fica como último recurso e só gasta as 20 chamadas do dia). Limites **por modelo** em `GEMINI_LIMITES`. Pro, 2.5, 2 Flash e 3.1 Pro têm limite 0 na chave: não usar. Gemma 4 (30 RPM / 14,4 mil RPD, mas TPM de 16 mil) fica **fora** até medir JSON por schema, instrução de sistema e ferramentas no conjunto de avaliação. No nível gratuito o Google pode usar o conteúdo enviado para melhorar produtos: vale para o lote (dados públicos) e exige cuidado com perguntas pessoais no chat. Ids da API a confirmar no AI Studio |
 
 ---
 
@@ -312,7 +313,7 @@ Toda saída é leitura automática de números, **regra experimental**, e **não
 
 ## 13. Plano de 2026-10-08 — Gemini, cota, lote gradual, chat e card IA
 
-**Status:** PLANEJADO · **Decisões:** DEC-IA-06..09 (seção 8) · **Coordenação:** hub `infra-b3-ecossytem/SPEC.md` 1A.4, linhas `GEM-*`.
+**Status:** PLANEJADO · **Decisões:** DEC-IA-06..10 (seção 8) · **Coordenação:** hub `infra-b3-ecossytem/SPEC.md` 1A.4, linhas `GEM-*`.
 
 ### 13.1 Divisão por repositório (execução paralela sem colisão)
 
@@ -419,14 +420,14 @@ Eventos, nesta ordem:
 **`GET /saude`** ganha o bloco (sem nunca expor a chave):
 ```json
 "provedores": { "ordem_lote": ["gemini", "ollama"], "ordem_chat": ["gemini"],
-  "gemini": { "configurado": true, "modelos": [ { "nome": "...", "em_pausa_ate": null, "usadas_hoje": 12, "teto_dia": 200 } ] } },
+  "gemini": { "configurado": true, "modelos": [ { "nome": "...", "em_pausa_ate": null, "usadas_hoje": 12, "teto_dia": 500 } ] } },
 "cota": { "chat": { "restante_hoje": 41 }, "card": { "restante_hoje": 20 }, "lote": { "restante_hoje": 37 } }
 ```
 
 ### 13.4 Governador de cota
 
-- **Baldes diários** (percentual do teto diário somado dos modelos Gemini): `chat` 40%, `card` 20%, `lote` 40% (variáveis `COTA_*_PCT`). Depois das 18h (America/Sao_Paulo) a sobra de um balde pode ser usada por outro.
-- **Por modelo:** limite por minuto (`GEMINI_RPM`), teto diário (`GEMINI_RPD`), contados em SQLite (`/app/var/cota.sqlite`, volume `ia_indice` já existente). O dia zera à meia-noite de America/Los_Angeles (horário em que a cota do Google zera).
+- **Baldes diários** (percentual do teto diário somado dos modelos Gemini; com os padrões de `GEMINI_LIMITES`, 500 + 500 + 20 = 1.020 chamadas por dia): `chat` 40%, `card` 20%, `lote` 40% (variáveis `COTA_*_PCT`). Depois das 18h (America/Sao_Paulo) a sobra de um balde pode ser usada por outro.
+- **Por modelo:** limite por minuto e teto diário próprios de cada modelo (`GEMINI_LIMITES`; reserva em `GEMINI_RPM` / `GEMINI_RPD`), contados em SQLite (`/app/var/cota.sqlite`, volume `ia_indice` já existente). O dia zera à meia-noite de America/Los_Angeles (horário em que a cota do Google zera).
 - **Pausa após 429:** usa o `retryDelay` da resposta; sem ele, 60 s; se a mensagem indicar cota diária, até o próximo zeramento.
 - **Prioridade:** chat > card > lote. Com menos de 15% do teto do dia restante, o balde `lote` deixa de usar Gemini.
 - **Cache de resposta:** chave = hash(provedor, modelo, prompt normalizado, schema); validade até o fim do dia. Repetição idêntica não gasta cota.
@@ -436,8 +437,9 @@ Eventos, nesta ordem:
 | Variável | Padrão | Observação |
 |---|---|---|
 | `GEMINI_API_KEY` | (vazia) | Só em `.env.ia` (DEC-IA-09). Vazia ⇒ Gemini indisponível |
-| `GEMINI_MODELOS` | `gemini-3.8-flash` | Lista separada por vírgula, na ordem de tentativa. Os nomes válidos são os liberados para a chave no AI Studio |
-| `GEMINI_RPM` / `GEMINI_RPD` | `10` / `200` | Por modelo; ajustar ao limite real da chave |
+| `GEMINI_MODELOS` | `gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.8-flash` | Lista separada por vírgula, na ordem de tentativa (DEC-IA-10). Os ids são **a confirmar** no AI Studio: a tabela de limites mostra nomes de exibição, não ids da API |
+| `GEMINI_LIMITES` | `15/500,15/500,5/20` | `RPM/RPD` de cada modelo, na mesma ordem de `GEMINI_MODELOS` (DEC-IA-10). Modelo sem entrada usa `GEMINI_RPM` / `GEMINI_RPD` |
+| `GEMINI_RPM` / `GEMINI_RPD` | `5` / `20` | Reserva para modelo sem entrada em `GEMINI_LIMITES`: o menor limite do nível gratuito, para nunca estourar a cota |
 | `GEMINI_TIMEOUT_S` | `30` | Por chamada |
 | `PROVEDORES_LOTE` | `gemini,ollama` | Ordem do lote e do card (DEC-IA-06) |
 | `PROVEDORES_CHAT` | `gemini` | DEC-IA-08: sem `ollama` |
@@ -453,7 +455,7 @@ Fase GEM-1 (base; desbloqueia tudo):
 | ID | Tarefa | Arquivos | Depende | Aceite | Status |
 |---|---|---|---|---|---|
 | TASK-IA-24 | Provedor Gemini: `gerar(sistema, usuario, schema) -> str` (JSON com schema) e `conversar(mensagens, sistema) -> Iterator[str]` (streaming), SDK `google-genai`. 429 vira `ErroDeCota(espera_s, diaria: bool)`; 5xx/timeout/rede viram `ErroDoProvedor` | `app/provedores/gemini.py`, `requirements.txt`, `tests/test_gemini.py` | DEC-IA-06/09 | Testes com cliente falso: 429 com e sem `retryDelay`, 500, timeout, JSON pedido via schema; a chave nunca aparece em mensagem de erro | PLANEJADO |
-| TASK-IA-25 | Governador de cota (13.4): baldes, RPM, RPD, pausa, prioridade, cache, relógio injetável | `app/cota.py`, `tests/test_cota.py` | — | Testes com relógio falso: zeramento em America/Los_Angeles, pausa de 429, teto por balde, sobra após 18h, corte do lote abaixo de 15%, cache impede segunda cobrança | PLANEJADO |
+| TASK-IA-25 | Governador de cota (13.4): baldes, RPM e RPD **por modelo** (`GEMINI_LIMITES`, DEC-IA-10), pausa, prioridade, cache, relógio injetável | `app/cota.py`, `tests/test_cota.py` | — | Testes com relógio falso: limites diferentes por modelo (15/500 e 5/20), zeramento em America/Los_Angeles, pausa de 429, teto por balde, sobra após 18h, corte do lote abaixo de 15%, cache impede segunda cobrança | PLANEJADO |
 | TASK-IA-26 | Cadeia de provedores: percorre `PROVEDORES_*`, consulta o governador antes de cada chamada, valida cada resposta e passa ao próximo se rejeitada; Gemini sem segunda tentativa, Ollama mantém a sua. Log com provedor que respondeu e motivo de cada falha | `app/provedores/cadeia.py`, `app/orquestrador.py`, `tests/test_cadeia.py` | IA-24, IA-25 | 429 no m1 ⇒ m2; todos em pausa ⇒ Ollama; tudo falhou ⇒ regra; o `modelo` da resposta é o de quem respondeu; `POST /opiniao` v1.0 continua passando nos 315 dossiês (`tests/test_avaliacao.py`) | IMPLEMENTADO (Sessão 01, 2026-10-08): `app/provedores/cadeia.py` (`Cadeia`, `Elo`, `ErroDeCota`, porta `Governador` com `SemGovernador` até a IA-25, `montar_cadeia` por `PROVEDORES_LOTE/CHAT` com um elo por modelo de `GEMINI_MODELOS` quando o `GeminiProvedor` da IA-24 existir); `/opiniao` e `/opiniao/ativo` usam a cadeia (v1.1: item pendente segue sozinho ao próximo elo). Conferido com provedores falsos (429 → próximo; rejeitado → próximo; local refaz). Testes adiados por decisão do usuário |
 | TASK-IA-27 | Configuração e compose: variáveis da 13.5 em `app/config.py`; `compose.ia.yml` com `env_file` `${IA_CONTEXT:-../insider-ia-b3-ecossytem}/.env.ia` (`required: false`), `ia-opiniao` nas redes `ia` + `saida`, override do `painel-ativos-frontend` (rede `ia`, `IA_URL=http://ia-opiniao:8000`) e do `gestor-ativos-brutos` (rede `ia`, para os GETs do CTR-IA-03); `.env.example` com as variáveis **sem valores**; `/saude` com o bloco da 13.3 | `app/config.py`, `app/api.py`, `compose.ia.yml`, `.env.example`, `tests/test_api.py` | IA-25 | `/saude` mostra provedores e cota e **não** contém a chave (teste); sem `.env.ia` o serviço sobe com Gemini indisponível | PLANEJADO |
 | TASK-IA-28 | Teste de vazamento da chave: captura de log de todos os caminhos (sucesso, 429, erro, chat) com uma chave falsa; nenhuma ocorrência no texto capturado nem nas respostas | `tests/test_segredo.py` | IA-24..27 | Teste verde no CI | PLANEJADO |
@@ -468,11 +470,11 @@ Fase GEM-4 (chat):
 
 | ID | Tarefa | Arquivos | Depende | Aceite | Status |
 |---|---|---|---|---|---|
-| TASK-IA-30 | `POST /chat` com SSE conforme CTR-IA-02; só `PROVEDORES_CHAT`; sem Gemini ⇒ `erro INDISPONIVEL` com `tentar_apos` | `app/chat/api.py`, `app/chat/sse.py`, `tests/chat/test_sse.py` | IA-26 | Ordem de eventos `inicio → token* → fontes? → aviso* → fim`, ou `erro`; teste do caso sem Gemini | PLANEJADO |
-| TASK-IA-31 | Sessões: últimas 12 mensagens em SQLite, expiram em 24h; a cada 8 mensagens o histórico antigo vira um resumo (uma chamada no balde `chat`) | `app/chat/sessoes.py`, `tests/chat/test_sessoes.py` | IA-30 | Expiração e resumo testados com relógio e provedor falsos | PLANEJADO |
-| TASK-IA-32 | Contexto do chat: trechos do RAG pela pergunta (`app.rag`) + pacote do ativo (CTR-IA-03) quando há `simbolo`; nada com data posterior ao pregão (P-4) | `app/chat/contexto.py`, `tests/chat/test_contexto.py` | IA-30, IA-35 | Pergunta sobre PETR4 traz ficha e pacote; filtro de ponto no tempo testado | PLANEJADO |
-| TASK-IA-33 | Ferramentas só leitura que o Gemini pode chamar (function calling): `cotacao(s)`, `fundamentos(s)`, `opiniao(s)`, `comunicados(s)`, `comparar(s1, s2)`; cada uma é um GET fixo no gestor (lista do CTR-IA-03), com símbolo validado (`^[A-Z]{4}[0-9]{1,2}$`), no máximo 4 chamadas por mensagem e resposta truncada a 4 KB. O modelo nunca monta URL nem SQL. "Maiores altas do período" fica **fora** deste plano: exige endpoint novo no gestor | `app/chat/ferramentas.py`, `tests/chat/test_ferramentas.py` | IA-30, IA-35 | Símbolo inválido rejeitado sem chamar o gestor; 5ª chamada na mesma mensagem recusada; gestor fora ⇒ ferramenta devolve "dado indisponível" e o chat segue | PLANEJADO |
-| TASK-IA-34 | Guardas do chat: prompt de sistema proíbe recomendação pessoal (responde com leitura dos sinais + aviso); classificador simples de tema (palavras e RAG) para `FORA_DO_TEMA`; número sem fonte vira evento `aviso`; vocabulário proibido ⇒ uma regeneração; limite por sessão (`CHAT_*`) | `app/chat/guardas.py`, `skills/chat/sistema.md`, `tests/chat/test_guardas.py` | IA-30 | Casos: "devo comprar X?", "receita de bolo", número inventado, 61ª mensagem do dia, 2 mensagens em 1 s | PLANEJADO |
+| TASK-IA-30 | `POST /chat` com SSE conforme CTR-IA-02; só `PROVEDORES_CHAT`; sem Gemini ⇒ `erro INDISPONIVEL` com `tentar_apos` | `app/chat/api.py`, `app/chat/sse.py`, `tests/chat/test_sse.py` | IA-26 | Ordem de eventos `inicio → token* → fontes? → aviso* → fim`, ou `erro`; teste do caso sem Gemini | IMPLEMENTADO (Sessão 02, 2026-10-08): endpoint SSE em `app/chat/api.py`; formatação em `app/chat/sse.py`; guardas, sessões e contexto integrados; 166 testes verdes |
+| TASK-IA-31 | Sessões: últimas 12 mensagens em SQLite, expiram em 24h; a cada 8 mensagens o histórico antigo vira um resumo (uma chamada no balde `chat`) | `app/chat/sessoes.py`, `tests/chat/test_sessoes.py` | IA-30 | Expiração e resumo testados com relógio e provedor falsos | IMPLEMENTADO (Sessão 02, 2026-10-08): `SessoesChat` com janela de 12, expiração de 24 h, resumo a cada 8 mensagens, relógio injetável |
+| TASK-IA-32 | Contexto do chat: trechos do RAG pela pergunta (`app.rag`) + pacote do ativo (CTR-IA-03) quando há `simbolo`; nada com data posterior ao pregão (P-4) | `app/chat/contexto.py`, `tests/chat/test_contexto.py` | IA-30, IA-35 | Pergunta sobre PETR4 traz ficha e pacote; filtro de ponto no tempo testado | IMPLEMENTADO (Sessão 02, 2026-10-08): `montar_contexto` com RAG (P-4) + GETs diretos ao gestor; gestor fora retorna bloco vazio sem lançar |
+| TASK-IA-33 | Ferramentas só leitura que o Gemini pode chamar (function calling): `cotacao(s)`, `fundamentos(s)`, `opiniao(s)`, `comunicados(s)`, `comparar(s1, s2)`; cada uma é um GET fixo no gestor (lista do CTR-IA-03), com símbolo validado (`^[A-Z]{4}[0-9]{1,2}$`), no máximo 4 chamadas por mensagem e resposta truncada a 4 KB. O modelo nunca monta URL nem SQL. "Maiores altas do período" fica **fora** deste plano: exige endpoint novo no gestor | `app/chat/ferramentas.py`, `tests/chat/test_ferramentas.py` | IA-30, IA-35 | Símbolo inválido rejeitado sem chamar o gestor; 5ª chamada na mesma mensagem recusada; gestor fora ⇒ ferramenta devolve "dado indisponível" e o chat segue | IMPLEMENTADO (Sessão 02, 2026-10-08): 5 ferramentas + `executar()` com validação, limite de 4 chamadas e truncagem a 4 KB |
+| TASK-IA-34 | Guardas do chat: prompt de sistema proíbe recomendação pessoal (responde com leitura dos sinais + aviso); classificador simples de tema (palavras e RAG) para `FORA_DO_TEMA`; número sem fonte vira evento `aviso`; vocabulário proibido ⇒ uma regeneração; limite por sessão (`CHAT_*`) | `app/chat/guardas.py`, `skills/chat/sistema.md`, `tests/chat/test_guardas.py` | IA-30 | Casos: "devo comprar X?", "receita de bolo", número inventado, 61ª mensagem do dia, 2 mensagens em 1 s | IMPLEMENTADO (Sessão 02, 2026-10-08): classificador por palavras-chave, limite diário/intervalo, detecção de número sem fonte, vocabulário proibido com regeneração |
 
 Fase GEM-5 (card IA):
 
