@@ -80,3 +80,63 @@ class RespostaOpiniao(BaseModel):
     skills_versao: str
     origem: str
     tentativas: int = 0
+
+
+# --- CTR-IA-01 v1.1 (SPEC 13.3): os 3 horizontes de um ativo numa chamada -------------------
+
+
+class PedidoHorizonte(BaseModel):
+    """Um horizonte do pedido v1.1: mesmos campos e regras da v1.0, sem os do ativo."""
+
+    horizonte_pregoes: int = Field(gt=0)
+    evidencias: list[Evidencia]
+    permitidas: list[str] = Field(min_length=1)
+    risco_calculado: str
+    motivo_sem_base: str | None = None
+
+
+class PedidoOpiniaoAtivo(BaseModel):
+    simbolo: str
+    data_pregao: str
+    # Balde de cota (SPEC 13.4); hoje so `lote`. O painel nao gera opiniao (TASK-IA-37 descartada).
+    uso: Literal["lote"] = "lote"
+    dados_ausentes: list[str] = Field(default_factory=list)
+    versao_regra: str = ""
+    horizontes: list[PedidoHorizonte] = Field(min_length=1, max_length=6)
+
+    @field_validator("horizontes")
+    @classmethod
+    def _sem_repetir(cls, valor: list[PedidoHorizonte]) -> list[PedidoHorizonte]:
+        vistos = [h.horizonte_pregoes for h in valor]
+        if len(set(vistos)) != len(vistos):
+            raise ValueError(f"horizonte repetido: {vistos}")
+        return valor
+
+    def do_horizonte(self, h: PedidoHorizonte) -> PedidoOpiniao:
+        """Pedido v1.0 equivalente, para reusar validador, regra e contexto sem mudar nada deles."""
+        return PedidoOpiniao(simbolo=self.simbolo, data_pregao=self.data_pregao,
+                             horizonte_pregoes=h.horizonte_pregoes, evidencias=h.evidencias,
+                             permitidas=h.permitidas, risco_calculado=h.risco_calculado,
+                             motivo_sem_base=h.motivo_sem_base, dados_ausentes=self.dados_ausentes,
+                             versao_regra=self.versao_regra)
+
+
+class ItemOpiniaoAtivo(RespostaOpiniao):
+    horizonte_pregoes: int
+
+
+class CotaDaResposta(BaseModel):
+    """`gemini_disponivel = false` avisa o worker que o resto do lote nao deve chamar o servico."""
+
+    balde: str
+    restante_hoje: int | None = None
+    gemini_disponivel: bool = False
+
+
+class RespostaOpiniaoAtivo(BaseModel):
+    simbolo: str
+    data_pregao: str
+    modelo: str
+    skills_versao: str
+    itens: list[ItemOpiniaoAtivo]
+    cota: CotaDaResposta

@@ -13,8 +13,8 @@ from fastapi import FastAPI, HTTPException
 from app import skills as skills_mod
 from app.config import Settings
 from app.contexto import ContextoRag
-from app.modelos import PedidoOpiniao, RespostaOpiniao
-from app.orquestrador import opinar
+from app.modelos import PedidoOpiniao, PedidoOpiniaoAtivo, RespostaOpiniao, RespostaOpiniaoAtivo
+from app.orquestrador import opinar, opinar_ativo
 from app.provedores.ollama import OllamaProvedor
 
 app = FastAPI(title="insider-ia-b3-ecossytem", version="0.1.0")
@@ -78,6 +78,27 @@ def opiniao(pedido: PedidoOpiniao) -> RespostaOpiniao:
                   sistema=skills_mod.montar_sistema(escolhidas) or None,
                   schema=skills_mod.schema_da_resposta(settings.dir_skills),
                   contexto=ContextoRag(settings.rag_indice) if settings.rag_indice.is_file() else None)
+
+
+@app.post("/opiniao/ativo", response_model=RespostaOpiniaoAtivo)
+def opiniao_do_ativo(pedido: PedidoOpiniaoAtivo) -> RespostaOpiniaoAtivo:
+    """CTR-IA-01 v1.1 (SPEC 13.3): os horizontes do ativo numa chamada ao modelo, validados item a item.
+
+    200 sempre que o corpo for valido (falha do modelo vira regra no item); 422 so para corpo invalido.
+    """
+    settings = Settings.do_ambiente()
+    conjunto = skills_mod.listar(settings.dir_skills)
+    provedor = OllamaProvedor(settings.ollama_url, settings.modelo_chat, timeout_s=settings.timeout_modelo_s)
+    ids = [e.id for h in pedido.horizontes for e in h.evidencias]
+    escolhidas: list = []
+    for h in pedido.horizontes:
+        for s in skills_mod.selecionar(conjunto, h.horizonte_pregoes, ids):
+            if s not in escolhidas:
+                escolhidas.append(s)
+    return opinar_ativo(pedido, provedor, skills_mod.versao_do_conjunto(conjunto),
+                        sistema=skills_mod.montar_sistema(escolhidas) or None,
+                        schema_do_item=skills_mod.schema_da_resposta(settings.dir_skills),
+                        contexto=ContextoRag(settings.rag_indice) if settings.rag_indice.is_file() else None)
 
 
 @app.post("/indexar")

@@ -462,7 +462,7 @@ Fase GEM-2 (lote gradual):
 
 | ID | Tarefa | Arquivos | Depende | Aceite | Status |
 |---|---|---|---|---|---|
-| TASK-IA-29 | `POST /opiniao/ativo` (CTR-IA-01 v1.1): uma chamada ao modelo para os 3 horizontes, schema com `itens[]`, validação por item, item rejeitado vai ao próximo provedor sozinho; bloco `cota` na saída | `app/api.py`, `app/modelos.py`, `app/orquestrador.py`, `app/prompt.py`, `skills/formato-resposta/schema_ativo.json`, `tests/test_opiniao_ativo.py` | IA-26 | Com provedor falso: 1 chamada para 3 horizontes; item inválido isolado; `uso` escolhe o balde; v1.0 inalterada | PLANEJADO |
+| TASK-IA-29 | `POST /opiniao/ativo` (CTR-IA-01 v1.1): uma chamada ao modelo para os 3 horizontes, schema com `itens[]`, validação por item, item rejeitado vai ao próximo provedor sozinho; bloco `cota` na saída | `app/api.py`, `app/modelos.py`, `app/orquestrador.py`, `app/prompt.py`, `skills/formato-resposta/schema_ativo.json`, `tests/test_opiniao_ativo.py` | IA-26 | Com provedor falso: 1 chamada para 3 horizontes; item inválido isolado; `uso` escolhe o balde; v1.0 inalterada | IMPLEMENTADO (Sessão 01, 2026-10-08): `POST /opiniao/ativo` em `app/api.py`, `opinar_ativo` em `app/orquestrador.py`, modelos v1.1 em `app/modelos.py`, `schema_do_ativo`/`montar_mensagem_ativo` em `app/prompt.py` (schema derivado do da skill, sem arquivo novo). Item rejeitado ou ausente vai para a regra (a cadeia da IA-26 entra antes quando existir); `cota` fixa `gemini_disponivel=false` até a IA-25. Testes adiados por decisão do usuário |
 
 Fase GEM-4 (chat):
 
