@@ -190,3 +190,39 @@ def test_chat_nao_vaza(ambiente, monkeypatch, nome):
     assert resposta.status_code == 200
     assert "event:" in texto  # o fluxo SSE rodou de fato (inicio/token/fim ou erro)
     assert_sem_chave(texto, resposta.headers, ambiente.text)
+
+
+PACOTE = {"simbolo": "PETR4", "data_pregao": "2026-10-09",
+          "cotacao": {"fechamento": 54.33, "variacao_1d": 0.0095, "variacao_1m": 0.13, "variacao_12m": 0.748},
+          "fundamentos": {"pl": 5.3}, "sinais": [], "opiniao": [], "comunicados": [], "manchetes": [],
+          "aviso": "Leitura automática dos números, regra experimental. Não é recomendação de investimento."}
+MANCHETES = [{"titulo": f"Manchete {i}", "link": f"https://n.test/{i}", "fonte": "Valor", "simbolos": ["PETR4"]}
+             for i in range(3)]
+
+
+@pytest.mark.parametrize("nome", list(CENARIOS))
+def test_leitura_e_resumo_de_manchetes_nao_vazam(ambiente, monkeypatch, nome):
+    """Rotas do card (balde `card`): CTR-IA-04 e TASK-IA-38, nos mesmos caminhos de falha."""
+    from app.api import app
+    from app.ativo import rotas as rotas_ativo
+
+    usar_cenario(monkeypatch, nome)
+    monkeypatch.setattr(rotas_ativo, "pacote", lambda simbolo: {**PACOTE, "data_pregao": f"2026-10-09-{nome}"})
+    cliente = TestClient(app)
+    leitura = cliente.post("/ativo/PETR4/leitura")
+    resumo = cliente.post("/manchetes/resumo", json={"manchetes": [{**m, "titulo": f"{m['titulo']} {nome}"}
+                                                                   for m in MANCHETES]})
+    assert leitura.status_code == 200 and resumo.status_code == 200
+    assert len(resumo.json()["topicos"]) == 3  # regra ou modelo: sempre responde
+    assert_sem_chave(leitura.text, resumo.text, leitura.headers, resumo.headers, ambiente.text)
+
+
+def test_saude_com_gemini_lista_modelos_sem_a_chave(ambiente, monkeypatch):
+    from app.api import app
+
+    usar_cenario(monkeypatch, "429")
+    TestClient(app).post("/opiniao", json=pedido_v10())  # gera uso e pausa no governador
+    corpo = TestClient(app).get("/saude")
+    assert corpo.json()["provedores"]["gemini"]["configurado"] is True
+    assert [m["nome"] for m in corpo.json()["provedores"]["gemini"]["modelos"]] == ["gemini-teste-1", "gemini-teste-2"]
+    assert_sem_chave(corpo.text, corpo.headers, ambiente.text)

@@ -114,3 +114,11 @@ def test_rota_sem_provedor_responde_por_regra(monkeypatch):
     assert r.status_code == 200
     assert r.json()["origem"] == "REGRA" and len(r.json()["topicos"]) == 3
     assert TestClient(app).post("/manchetes/resumo", json={"manchetes": [{"link": "x"}]}).status_code == 422
+
+
+def test_regra_com_todas_as_manchetes_do_mesmo_ativo_ainda_da_tres_topicos():
+    mesmas = entrada([{"titulo": f"Petrobras {i}", "link": f"https://n.test/p{i}", "simbolos": ["PETR4"]}
+                      for i in range(4)])
+    topicos = mod.topicos_de_regra(mesmas)
+    assert [t["links"] for t in topicos] == [["https://n.test/p0"], ["https://n.test/p1"], ["https://n.test/p2"]]
+    assert mod.validar({"topicos": topicos}, mesmas) == []

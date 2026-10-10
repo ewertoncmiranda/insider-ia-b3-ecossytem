@@ -118,14 +118,19 @@ def topicos_de_regra(manchetes: list[dict]) -> list[dict]:
     for m in manchetes:
         grupos.setdefault((m["simbolos"] or ["Mercado"])[0], []).append(m)
     maiores = sorted(grupos.items(), key=lambda g: -len(g[1]))[:TOPICOS]
+    esperado = min(TOPICOS, len(manchetes))
+    # Menos ativos que topicos: o grupo cita so a primeira manchete, para sobrar manchete que complete
+    # os topicos (o contrato pede `esperado` topicos, mesmo com todas as manchetes de um ativo so).
+    por_grupo = 3 if len(maiores) >= esperado else 1
     topicos = []
     for simbolo, itens in maiores:
-        extra = f" (+{len(itens) - 1} manchete{'s' if len(itens) > 2 else ''})" if len(itens) > 1 else ""
-        topicos.append({"texto": f"{simbolo}: {itens[0]['titulo']}{extra}", "links": [m["link"] for m in itens[:3]]})
-    # menos ativos que topicos: completa com as manchetes seguintes ainda nao citadas
+        extra = f" (+{len(itens) - 1} manchete{'s' if len(itens) > 2 else ''})" if len(itens) > 1 and por_grupo > 1 else ""
+        topicos.append({"texto": f"{simbolo}: {itens[0]['titulo']}{extra}",
+                        "links": [m["link"] for m in itens[:por_grupo]]})
+    # completa com as manchetes seguintes ainda nao citadas
     citados = {link for t in topicos for link in t["links"]}
     for m in manchetes:
-        if len(topicos) >= min(TOPICOS, len(manchetes)):
+        if len(topicos) >= esperado:
             break
         if m["link"] not in citados:
             topicos.append({"texto": m["titulo"], "links": [m["link"]]})
