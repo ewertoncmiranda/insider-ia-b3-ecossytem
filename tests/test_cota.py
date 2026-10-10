@@ -157,7 +157,7 @@ def test_chave_de_cache_estavel():
     a = chave_cache("gemini", "m", "x  y", {"b": 1, "a": 2})
     assert a == chave_cache("gemini", "m", "x y", {"a": 2, "b": 1})
     assert a != chave_cache("gemini", "outro", "x y", {"a": 2, "b": 1})
-    assert a != chave_cache("ollama", "m", "x y", {"a": 2, "b": 1})
+    assert a != chave_cache("outro-provedor", "m", "x y", {"a": 2, "b": 1})
 
 
 def test_conta_persiste_entre_instancias(tmp_path, relogio):

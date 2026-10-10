@@ -12,13 +12,10 @@ from app.api import app
 
 def _falso_rag(monkeypatch, resumo):
     pacote = types.ModuleType("app.rag")
-    emb = types.ModuleType("app.rag.embeddings")
-    emb.criar = lambda url, modelo: None
     idx = types.ModuleType("app.rag.indexador")
     idx.indexar = lambda dir_conhecimento, caminho, embedder=None: resumo
-    pacote.embeddings, pacote.indexador = emb, idx
+    pacote.indexador = idx
     monkeypatch.setitem(sys.modules, "app.rag", pacote)
-    monkeypatch.setitem(sys.modules, "app.rag.embeddings", emb)
     monkeypatch.setitem(sys.modules, "app.rag.indexador", idx)
 
 
@@ -35,6 +32,6 @@ def test_indexar_devolve_o_resumo(monkeypatch, tmp_path):
 
 
 def test_indexar_sem_modulo_responde_501(monkeypatch):
-    for nome in ("app.rag", "app.rag.embeddings", "app.rag.indexador"):
+    for nome in ("app.rag", "app.rag.indexador"):
         monkeypatch.setitem(sys.modules, nome, None)  # forca ImportError
     assert TestClient(app).post("/indexar").status_code == 501

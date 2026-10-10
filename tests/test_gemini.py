@@ -10,7 +10,7 @@ import httpx
 import pytest
 
 from app.provedores.gemini import ErroDeCota, GeminiProvedor, criar_provedores
-from app.provedores.ollama import ErroDoProvedor
+from app.provedores.base import ErroDoProvedor
 
 CHAVE = "AIzaFAKE-chave-de-teste-0123456789abcdef"
 SCHEMA = {"type": "object", "properties": {"opiniao": {"type": "string"}}, "required": ["opiniao"]}

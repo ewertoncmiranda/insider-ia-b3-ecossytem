@@ -1,7 +1,7 @@
 """Indexador incremental (TASK-IA-10): so trechos com hash novo sao
 (re)gravados e vetorizados; trecho que sumiu das fichas sai do indice.
 
-    python -m app.rag.indexador   # usa DIR_CONHECIMENTO, RAG_INDICE, OLLAMA_URL, MODELO_EMBED
+    python -m app.rag.indexador   # usa DIR_CONHECIMENTO e RAG_INDICE (indice textual)
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from app.rag import embeddings, indice, trechos
+from app.rag import indice, trechos
 
 LOTE_EMBED = 32
 log = logging.getLogger("rag")
@@ -83,8 +83,7 @@ def main() -> int:
     logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s rag - %(message)s")
     raiz = Path(__file__).resolve().parents[2]
     dir_conhecimento = Path(os.getenv("DIR_CONHECIMENTO", str(raiz / "conhecimento")))
-    embedder = embeddings.criar(os.getenv("OLLAMA_URL"), os.getenv("MODELO_EMBED", "nomic-embed-text"))
-    r = indexar(dir_conhecimento, indice.caminho_padrao(), embedder)
+    r = indexar(dir_conhecimento, indice.caminho_padrao(), None)
     log.info("Indexacao concluida | trechos=%s | novos=%s | removidos=%s | inalterados=%s | vetor=%s",
              r.total, r.novos, r.removidos, r.inalterados, r.com_vetor)
     return 0

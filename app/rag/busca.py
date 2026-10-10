@@ -9,12 +9,11 @@ os dois combinados por fusao de rankings (RRF). Sem vetor, so textual.
 from __future__ import annotations
 
 import math
-import os
 import re
 from datetime import date
 from pathlib import Path
 
-from app.rag import embeddings, indice as indice_sqlite
+from app.rag import indice as indice_sqlite
 from app.rag.trechos import Trecho
 
 RRF_K = 60
@@ -56,8 +55,8 @@ def buscar(consulta: str, *, disponivel_ate: date, simbolo: str | None = None, s
            tipo: str | None = None, k: int = 5, indice: Path | None = None, embedder=None) -> list[Trecho]:
     """Top-k trechos relevantes e ja publicos em `disponivel_ate`.
 
-    `embedder` e opcional: sem ele, tenta o Ollama do ambiente (OLLAMA_URL,
-    MODELO_EMBED) so se o indice tiver vetores; senao, busca so textual."""
+    `embedder` e opcional (qualquer objeto com `.vetores(textos)`): sem ele, busca so textual.
+    Desde 2026-10-08 o servico nao tem embedder proprio (o Ollama saiu, DEC-IA-11)."""
     where, parametros = _filtro(disponivel_ate, simbolo, setor, tipo)
     conexao = indice_sqlite.abrir(indice)
     try:
@@ -79,8 +78,6 @@ def buscar(consulta: str, *, disponivel_ate: date, simbolo: str | None = None, s
 
         tem_vetor = conexao.execute(
             f"SELECT 1 FROM trecho t WHERE t.vetor IS NOT NULL AND {where} LIMIT 1", parametros).fetchone()
-        if tem_vetor and embedder is None:
-            embedder = embeddings.criar(os.getenv("OLLAMA_URL"), os.getenv("MODELO_EMBED"))
         if tem_vetor and embedder is not None:
             alvo = embedder.vetores([consulta])[0]
             notas = []

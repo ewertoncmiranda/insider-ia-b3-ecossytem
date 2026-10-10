@@ -1,6 +1,6 @@
 """Reserva por regra (REQ-IA-04): a opiniao que existe sem modelo, montada so dos numeros da entrada.
 
-Usada quando nao ha o que escolher (so SEM_BASE permitido), quando o Ollama esta fora do ar ou
+Usada quando nao ha o que escolher (so SEM_BASE permitido), quando o Gemini esta indisponivel (sem chave, cota ou erro) ou
 quando a resposta do modelo e rejeitada duas vezes. `condicoes_contrarias` tambem preenche
 `o_que_invalida` das respostas do modelo: esse campo nunca e escrito por ele.
 """
