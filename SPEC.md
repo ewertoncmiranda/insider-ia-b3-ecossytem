@@ -500,3 +500,23 @@ Fase GEM-6 (resumo de manchetes):
 3. No painel: chat responde em streaming com fontes; sem Gemini mostra "Assistente indisponível até HH:MM".
 4. Card IA da ficha mostra pacote, leitura e chat fixado no ativo; tela inicial mostra manchetes dos favoritos.
 5. `grep` da chave nos logs de todos os containers e nas respostas: zero ocorrências.
+
+---
+
+## Plano SIM: prompt IA_LIVRE para o Simulador (2026-10-12)
+
+**Status:** PLANEJADO · **Contexto:** ver `painel-ativos-frontend/SPEC.md`, Plano SIM. O simulador tem uma 8ª estratégia (`IA_LIVRE`) que chama o Gemini sem os guards regulatórios do assistente principal. O modelo recebe os 7 resultados das outras estratégias para aquele ativo e responde com comprar/manter/sair + razão objetiva em linguagem direta.
+
+### Regras para agentes
+
+- Prompt `simulador_livre` não usa `Skill formato-resposta`; resposta é texto livre curto (3–5 frases).
+- Nunca incluir os guards "não é recomendação de investimento" nem a reserva por frase fixa do assistente.
+- Resultado salvo pelo gestor em `simulador_ia_analise`; o insider-ia não persiste nada.
+- `GEMINI_API_KEY` nunca aparece em log nem na resposta (TASK-IA-28 continua valendo).
+- IDs `SIM-IA-*` são reservados; não renomear.
+
+### Tarefas desta aplicação
+
+| ID | Tarefa | Arquivos | Depende | Aceite | Status |
+|---|---|---|---|---|---|
+| SIM-IA-1 | Criar rota `POST /simulador/analisar` que recebe `{ simbolo, resultados: [{versao, quintil, retorno_pct}] }` e retorna `{ analise, modelo, tokens_usados }` com análise objetiva do Gemini | `app/simulador/analisar.py`, `tests/test_simulador_analisar.py` | IA-26 (cadeia Gemini) | Segunda chamada com mesmos dados retorna mesmo texto (prompt determinístico); GEMINI_API_KEY ausente dos logs; sem Gemini responde com texto de indisponibilidade, nunca 500 | IMPLEMENTADO (Sessão 03, 2026-10-12): 7 testes passando; cache diário pelo hash da entrada; fallback por regra (convergência de quintis) quando Gemini indisponível; registrado em `app/api.py` |
