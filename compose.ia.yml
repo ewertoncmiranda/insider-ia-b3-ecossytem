@@ -57,7 +57,10 @@ services:
       - ia
 
   # O pacote do ativo e as ferramentas do chat leem apenas GETs do gestor.
+  # INSIDER_IA_URL aponta para o container ia-opiniao na rede ia (porta 8000).
   gestor-ativos-brutos:
+    environment:
+      INSIDER_IA_URL: http://ia-opiniao:8000
     networks:
       - observability
       - ia
