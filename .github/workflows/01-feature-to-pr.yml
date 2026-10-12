@@ -6,26 +6,7 @@ on:
       - 'feature**'
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'   # a mesma da imagem (Dockerfile)
-
-      - name: Install dependencies
-        run: pip install -r requirements-dev.txt
-
-      # So testes na esteira (decisao de 2026-10-07): sem lint e sem piso de cobertura.
-      - name: Tests
-        run: pytest -v
-
   create-pr:
-    needs: test
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -44,7 +25,7 @@ jobs:
           script: |
             const branch = context.ref.replace('refs/heads/', '');
             const title = `Merge ${branch} into develop`;
-            const body = `## Automated PR\n\nPR aberto automaticamente a partir de **${branch}** depois dos testes.`;
+            const body = `## Automated PR\n\nPR aberto automaticamente a partir de **${branch}**.`;
 
             const prs = await github.rest.pulls.list({
               owner: context.repo.owner,

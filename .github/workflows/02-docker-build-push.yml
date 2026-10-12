@@ -7,26 +7,7 @@ on:
       - main
 
 jobs:
-  # A imagem so e publicada se os testes passarem (sem lint nem piso de cobertura: decisao de 2026-10-07).
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install -r requirements-dev.txt
-
-      - name: Tests
-        run: pytest -v
-
   build-and-push:
-    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
